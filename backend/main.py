@@ -38,11 +38,11 @@ def create_ticket():
         # ==========================================
         # [개발 모드] LootLabs 차단 방지용 코드
         # 개발할 때는 네이버로 테스트하고, 나중에 배포할 때 이 줄만 지우세요!
-        base_link = "https://www.naver.com"
+        # base_link = "https://www.naver.com"
         # ==========================================
 
         # 2. 링크 조합 (시간 코드 제거함!)
-        # base_link = lootlabs_base if lootlabs_base else "https://google.com"
+        base_link = lootlabs_base if lootlabs_base else "https://google.com"
 
         if "?" in base_link:
             separator = "&"
