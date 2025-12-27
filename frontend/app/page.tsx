@@ -22,19 +22,18 @@ function GameContent() {
   const [loginPw, setLoginPw] = useState("");
   const [unlockPw, setUnlockPw] = useState("");
 
+  // ⚠️ 본인 백엔드 주소 확인
   const BACKEND_URL = "https://dead-or-play-kr.onrender.com";
 
-  // 🛠️ [핵심] 에러 메시지 분석 함수 (object Object 해결사)
+  // 🛠️ 에러 메시지 분석 함수 (object Object 해결사)
   const handleError = (data: any) => {
-    console.error("Server Error:", data); // 개발자 도구 콘솔에서도 확인 가능하게 출력
+    console.error("Server Error:", data);
 
     if (data.detail) {
-      // Pydantic 유효성 검사 에러일 경우 (배열 형태)
       if (Array.isArray(data.detail)) {
         const msg = data.detail[0]?.msg || "입력값이 올바르지 않습니다.";
         alert(`오류: ${msg}`);
       } else {
-        // 일반 에러 메시지
         alert(data.detail);
       }
     } else if (data.message) {
@@ -44,7 +43,7 @@ function GameContent() {
     }
   };
 
-  // 1. [티켓 생성] 참가하기
+  // 1. [티켓 생성] 참가하기 버튼
   const createTicket = async () => {
     setStatus("LOADING");
     try {
@@ -52,6 +51,7 @@ function GameContent() {
       const data = await res.json();
 
       if (res.ok && data.lootlabs_url) {
+        // 떠나기 전 티켓 임시 저장
         sessionStorage.setItem("pending_ticket", data.ticket_id);
         window.location.href = data.lootlabs_url;
       } else {
@@ -64,13 +64,16 @@ function GameContent() {
     }
   };
 
-  // 2. [티켓 검증] 페이지 로드 시
+  // 2. [티켓 검증] 페이지 로드 시 실행
   useEffect(() => {
+    // URL에 있거나, 브라우저 저장소(sessionStorage)에 있는 티켓을 찾음
     let targetTicket = urlClickId || sessionStorage.getItem("pending_ticket");
 
     if (targetTicket) {
       setStatus("LOADING");
-//       if (!urlClickId) sessionStorage.removeItem("pending_ticket");
+
+      // ⚠️ [중요 수정] 여기서 티켓을 바로 지우지 않습니다! (새로고침 에러 방지)
+      // 검증만 하고 티켓은 가입 완료할 때까지 유지합니다.
 
       fetch(`${BACKEND_URL}/gate/callback?click_id=${targetTicket}`)
         .then((res) => res.json())
@@ -79,16 +82,19 @@ function GameContent() {
             setDisplayId(data.instagram_id || "");
 
             if (data.has_password) {
-              // 이미 가입된 경우
+              // 이미 가입된 유저
               setIsRegistered(true);
               const storedTicket = sessionStorage.getItem("my_ticket");
+
+              // 내 기기인지 확인 (자동 로그인)
               if (storedTicket === targetTicket) setStatus("INTRO");
               else setStatus("LOCKED");
             } else {
-              // 신규 -> 회원가입
+              // 신규 유저 -> 회원가입 화면으로
               setStatus("INTRO");
             }
           } else {
+            // 검증 실패 시 (티켓이 진짜 유효하지 않은 경우)
             handleError(data);
             window.location.href = "/";
           }
@@ -97,7 +103,7 @@ function GameContent() {
     }
   }, [urlClickId]);
 
-  // 3. [회원가입] 강력한 검증 로직 추가 ✅
+  // 3. [회원가입] 강력 검증 로직 적용 ✅
   const handleRegister = async () => {
     // A. 입력값 검증
     if (!instagramId || instagramId.length < 2) {
@@ -107,12 +113,12 @@ function GameContent() {
       return alert("비밀번호는 최소 4자리 이상이어야 합니다.");
     }
 
-    // B. 비밀번호 일치 확인 (요청하신 기능)
+    // B. 비밀번호 일치 확인
     if (password !== confirmPassword) {
       return alert("❌ 비밀번호가 서로 다릅니다.\n다시 확인해주세요.");
     }
 
-    // C. 티켓 ID 확인 (이게 없으면 무조건 실패함)
+    // C. 티켓 ID 확인
     const currentTicket = urlClickId || sessionStorage.getItem("pending_ticket");
     if (!currentTicket) {
       return alert("티켓 정보가 없습니다. 처음부터 다시 시도해주세요.");
@@ -132,7 +138,11 @@ function GameContent() {
 
       if (res.ok && data.status === "SUCCESS") {
         alert("✅ 등록 완료! 환영합니다.");
+
+        // 🗑️ [중요] 가입에 성공했으니 이제 임시 티켓은 삭제합니다.
         sessionStorage.removeItem("pending_ticket");
+
+        // 로그인 상태 저장
         sessionStorage.setItem("my_ticket", currentTicket);
         setDisplayId(instagramId);
         setIsRegistered(true);
@@ -162,6 +172,7 @@ function GameContent() {
 
       if (res.ok && data.status === "SUCCESS") {
         sessionStorage.setItem("my_ticket", data.ticket_id);
+        // 로그인 성공 시 URL에 티켓을 붙여서 새로고침 (상태 갱신)
         window.location.href = `/?click_id=${data.ticket_id}`;
       } else {
         handleError(data);
@@ -198,11 +209,11 @@ function GameContent() {
     }
   };
 
-  // --- 렌더링 ---
+  // --- 화면 렌더링 ---
 
   if (status === "LOADING") return <div className="min-h-screen bg-black text-pink-500 flex items-center justify-center font-bold animate-pulse">LOADING...</div>;
 
-  // 잠금 화면
+  // A. 잠금 화면
   if (status === "LOCKED") {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
@@ -216,7 +227,7 @@ function GameContent() {
     );
   }
 
-  // 로그인 화면
+  // B. 로그인 화면
   if (status === "LOGIN") {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
@@ -231,7 +242,7 @@ function GameContent() {
     );
   }
 
-  // 대기실 & 회원가입
+  // C. 대기실 & 회원가입
   if (status === "INTRO") {
     return (
       <div className="min-h-screen bg-gray-900 text-white p-6 flex flex-col items-center justify-center border-8 border-pink-600 overflow-y-auto">
@@ -262,7 +273,7 @@ function GameContent() {
                 />
               </div>
 
-              {/* 비밀번호 불일치 시 경고 메시지 표시 */}
+              {/* 비밀번호 다를 때 경고 문구 */}
               {password && confirmPassword && password !== confirmPassword && (
                 <p className="text-red-500 text-xs text-right font-bold">비밀번호가 일치하지 않습니다!</p>
               )}
@@ -285,7 +296,7 @@ function GameContent() {
     );
   }
 
-  // 메인 화면
+  // D. 메인 화면
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
       <h1 className="text-5xl font-black text-pink-600 mb-4">DEAD OR PLAY</h1>
