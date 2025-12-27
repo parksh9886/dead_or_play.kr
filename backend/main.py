@@ -29,10 +29,10 @@ app.add_middleware(
 )
 
 # LootLabs 주소
-FIXED_LOOTLABS_URL = "https://lootdest.org/s?SW5bOAzX"
+FIXED_LOOTLABS_URL = "https://loot-link.com/s?M6BOhyGL"
 
 
-# --- [데이터 모델 정의] ---
+# --- [데이터 모델] ---
 
 class UserRegister(BaseModel):
     click_id: str
@@ -50,16 +50,18 @@ class UserLogin(BaseModel):
 @app.post("/gate/create")
 def create_ticket():
     try:
-        # [수정됨] IP 검사 로직 삭제 -> 무조건 신규 생성
-
-        # 1. 티켓 생성 (IP 주소 저장 안 함)
+        # 1. 티켓 생성 (빈 객체 삽입 -> ID/Nonce 자동생성)
         response = supabase.table("tickets").insert({}).execute()
 
         if not response.data:
             raise HTTPException(status_code=500, detail="DB 티켓 생성 실패")
 
         ticket_data = response.data[0]
-        nonce = ticket_data['nonce']
+
+        # [안전장치] nonce가 없으면 에러
+        nonce = ticket_data.get('nonce')
+        if not nonce:
+            raise HTTPException(status_code=500, detail="티켓 번호(nonce) 생성 실패")
 
         # 2. 링크 생성
         final_link = f"{FIXED_LOOTLABS_URL}&click_id={nonce}"
@@ -71,19 +73,18 @@ def create_ticket():
         }
 
     except Exception as e:
-        print(f"❌ 에러 발생: {e}")
+        print(f"❌ 생성 에러: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# 기존 verify_ticket 함수를 지우고 이걸로 덮어쓰세요
 @app.get("/gate/callback")
-def verify_ticket(click_id: str = Query(None)):  # None 허용으로 변경
+def verify_ticket(click_id: str = Query(None)):
     try:
-        # 1. 티켓 아이디가 아예 안 넘어왔을 때 방어
+        # 1. 유효성 검사
         if not click_id or click_id == "{CLICK_ID}" or click_id == "undefined":
             raise HTTPException(status_code=400, detail="티켓 정보가 없습니다.")
 
-        # 2. 티켓 조회
+        # 2. DB 조회
         res = supabase.table("tickets").select("*").eq("nonce", click_id).execute()
 
         if not res.data:
@@ -91,18 +92,20 @@ def verify_ticket(click_id: str = Query(None)):  # None 허용으로 변경
 
         ticket = res.data[0]
 
-        # 3. 상태 업데이트 (에러나도 무시하고 진행하도록 안전장치 추가)
+        # 3. 상태 업데이트 (에러 무시)
         try:
             current_status = ticket.get('status')
             if current_status != 'USED':
                 supabase.table("tickets").update({"status": "USED"}).eq("nonce", click_id).execute()
         except Exception as e:
-            print(f"⚠️ 상태 업데이트 경고 (무시): {e}")
+            print(f"⚠️ 상태 업데이트 경고: {e}")
 
-        real_id = ticket['id']
+        # 4. 참가번호 가져오기 (여기가 에러 원인이었음!)
+        # [수정] id가 없으면 0으로 처리해서 에러 방지
+        real_id = ticket.get('id', 0)
         formatted_num = f"{real_id:04d}"
 
-        # 비밀번호 존재 여부 체크 (에러 방지)
+        # 5. 비밀번호 유무 확인
         has_password = ticket.get('password') is not None
 
         return {
@@ -115,9 +118,10 @@ def verify_ticket(click_id: str = Query(None)):  # None 허용으로 변경
     except HTTPException as e:
         raise e
     except Exception as e:
-        print(f"❌ 서버 에러: {e}")
-        # 500 에러가 나더라도 클라이언트가 알 수 있게 메시지 전달
-        raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
+        print(f"❌ 검증 에러: {e}")
+        # 에러 메시지를 그대로 보내서 원인 파악 용이하게 함
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/gate/register")
 def register_user(user: UserRegister):
@@ -126,6 +130,7 @@ def register_user(user: UserRegister):
         if not res.data:
             raise HTTPException(status_code=400, detail="존재하지 않는 사용자입니다.")
 
+        # 이미 비밀번호가 있는지 체크 (안전하게 .get 사용)
         if res.data[0].get('password'):
             return {"status": "FAIL", "message": "이미 등록된 사용자입니다."}
 
@@ -144,11 +149,13 @@ def register_user(user: UserRegister):
 @app.post("/gate/login")
 def login_user(user: UserLogin):
     try:
+        # "0056" -> 56 변환
         try:
             target_id = int(user.player_num)
         except ValueError:
             return {"status": "FAIL", "message": "잘못된 참가번호 형식입니다."}
 
+        # DB 조회
         res = supabase.table("tickets").select("*").eq("id", target_id).execute()
 
         if not res.data:
@@ -156,7 +163,9 @@ def login_user(user: UserLogin):
 
         ticket = res.data[0]
 
-        if ticket['password'] != user.password:
+        # 비밀번호 비교 (안전하게 .get 사용)
+        db_password = ticket.get('password')
+        if not db_password or db_password != user.password:
             return {"status": "FAIL", "message": "비밀번호가 일치하지 않습니다."}
 
         return {
