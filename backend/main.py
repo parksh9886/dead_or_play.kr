@@ -26,7 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-FIXED_LOOTLABS_URL = "https://loot-link.com/s?M6BOhyGL"
+FIXED_LOOTLABS_URL = "https://lootdest.org/s?SW5bOAzX"
 
 
 # --- 데이터 모델 (깔끔하게 정리됨) ---
