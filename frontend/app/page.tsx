@@ -22,10 +22,9 @@ function GameContent() {
   const [loginPw, setLoginPw] = useState("");
   const [unlockPw, setUnlockPw] = useState("");
 
-  // ⚠️ 본인 백엔드 주소 확인
   const BACKEND_URL = "https://dead-or-play-kr.onrender.com";
 
-  // 🛠️ 에러 메시지 분석 함수 (object Object 해결사)
+  // 🛠️ 에러 메시지 분석 함수
   const handleError = (data: any) => {
     console.error("Server Error:", data);
 
@@ -43,37 +42,37 @@ function GameContent() {
     }
   };
 
-  // 1. [티켓 생성] 참가하기 버튼
+  // 1. [티켓 생성] 참가하기
   const createTicket = async () => {
     setStatus("LOADING");
     try {
-      const res = await fetch(`${BACKEND_URL}/gate/create`, { method: "POST" });
+      const res = await fetch(`${BACKEND_URL}/gate/create`, {
+        method: "POST",
+        headers: { "Cache-Control": "no-cache" } // 모바일 캐시 방지
+      });
       const data = await res.json();
 
       if (res.ok && data.lootlabs_url) {
-        // 떠나기 전 티켓 임시 저장
         sessionStorage.setItem("pending_ticket", data.ticket_id);
-        window.location.href = data.lootlabs_url;
+        // 모바일 호환성을 위해 replace 사용
+        window.location.replace(data.lootlabs_url);
       } else {
         handleError(data);
         setStatus("IDLE");
       }
     } catch (e) {
-      alert("서버와 연결할 수 없습니다.");
+      alert("서버와 연결할 수 없습니다. (Sleep Mode일 수 있으니 잠시 후 다시 시도해주세요)");
       setStatus("IDLE");
     }
   };
 
-  // 2. [티켓 검증] 페이지 로드 시 실행
+  // 2. [티켓 검증] 페이지 로드 시
   useEffect(() => {
-    // URL에 있거나, 브라우저 저장소(sessionStorage)에 있는 티켓을 찾음
     let targetTicket = urlClickId || sessionStorage.getItem("pending_ticket");
 
     if (targetTicket) {
       setStatus("LOADING");
-
-      // ⚠️ [중요 수정] 여기서 티켓을 바로 지우지 않습니다! (새로고침 에러 방지)
-      // 검증만 하고 티켓은 가입 완료할 때까지 유지합니다.
+      // 주의: 여기서 티켓을 삭제하지 않음 (가입 완료 시 삭제)
 
       fetch(`${BACKEND_URL}/gate/callback?click_id=${targetTicket}`)
         .then((res) => res.json())
@@ -86,15 +85,13 @@ function GameContent() {
               setIsRegistered(true);
               const storedTicket = sessionStorage.getItem("my_ticket");
 
-              // 내 기기인지 확인 (자동 로그인)
               if (storedTicket === targetTicket) setStatus("INTRO");
               else setStatus("LOCKED");
             } else {
-              // 신규 유저 -> 회원가입 화면으로
+              // 신규 유저
               setStatus("INTRO");
             }
           } else {
-            // 검증 실패 시 (티켓이 진짜 유효하지 않은 경우)
             handleError(data);
             window.location.href = "/";
           }
@@ -103,18 +100,23 @@ function GameContent() {
     }
   }, [urlClickId]);
 
-  // 3. [회원가입] 강력 검증 로직 적용 ✅
+  // 3. [회원가입] 대소문자 무시 로직 적용 ✅
   const handleRegister = async () => {
+    // 공백 제거 및 소문자 변환 준비
+    const cleanId = instagramId.trim();
+    const cleanPw = password.trim();
+    const cleanConfirm = confirmPassword.trim();
+
     // A. 입력값 검증
-    if (!instagramId || instagramId.length < 2) {
+    if (!cleanId || cleanId.length < 2) {
       return alert("인스타그램 ID를 정확히 입력해주세요.");
     }
-    if (!password || password.length < 4) {
+    if (!cleanPw || cleanPw.length < 4) {
       return alert("비밀번호는 최소 4자리 이상이어야 합니다.");
     }
 
-    // B. 비밀번호 일치 확인
-    if (password !== confirmPassword) {
+    // B. 비밀번호 일치 확인 (대소문자 무시하고 비교)
+    if (cleanPw.toLowerCase() !== cleanConfirm.toLowerCase()) {
       return alert("❌ 비밀번호가 서로 다릅니다.\n다시 확인해주세요.");
     }
 
@@ -130,8 +132,8 @@ function GameContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           click_id: currentTicket,
-          password: password,
-          instagram_id: instagramId
+          password: cleanPw.toLowerCase(),     // 소문자로 전송
+          instagram_id: cleanId.toLowerCase()  // 소문자로 전송
         }),
       });
       const data = await res.json();
@@ -139,12 +141,10 @@ function GameContent() {
       if (res.ok && data.status === "SUCCESS") {
         alert("✅ 등록 완료! 환영합니다.");
 
-        // 🗑️ [중요] 가입에 성공했으니 이제 임시 티켓은 삭제합니다.
         sessionStorage.removeItem("pending_ticket");
-
-        // 로그인 상태 저장
         sessionStorage.setItem("my_ticket", currentTicket);
-        setDisplayId(instagramId);
+
+        setDisplayId(cleanId.toLowerCase());
         setIsRegistered(true);
         setStatus("INTRO");
       } else {
@@ -155,24 +155,26 @@ function GameContent() {
     }
   };
 
-  // 4. [로그인]
+  // 4. [로그인] 대소문자 무시 ✅
   const handleLogin = async () => {
-    if (!loginId || !loginPw) return alert("아이디와 비밀번호를 입력하세요.");
+    const cleanId = loginId.trim().toLowerCase();
+    const cleanPw = loginPw.trim().toLowerCase();
+
+    if (!cleanId || !cleanPw) return alert("아이디와 비밀번호를 입력하세요.");
 
     try {
       const res = await fetch(`${BACKEND_URL}/gate/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          instagram_id: loginId,
-          password: loginPw
+          instagram_id: cleanId,
+          password: cleanPw
         }),
       });
       const data = await res.json();
 
       if (res.ok && data.status === "SUCCESS") {
         sessionStorage.setItem("my_ticket", data.ticket_id);
-        // 로그인 성공 시 URL에 티켓을 붙여서 새로고침 (상태 갱신)
         window.location.href = `/?click_id=${data.ticket_id}`;
       } else {
         handleError(data);
@@ -182,17 +184,19 @@ function GameContent() {
     }
   };
 
-  // 5. [잠금 해제]
+  // 5. [잠금 해제] 대소문자 무시 ✅
   const handleUnlock = async () => {
-    if (!unlockPw) return alert("비밀번호를 입력하세요.");
+    const cleanPw = unlockPw.trim().toLowerCase();
+
+    if (!cleanPw) return alert("비밀번호를 입력하세요.");
 
     try {
       const res = await fetch(`${BACKEND_URL}/gate/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          instagram_id: displayId,
-          password: unlockPw
+          instagram_id: displayId.toLowerCase(),
+          password: cleanPw
         }),
       });
       const data = await res.json();
@@ -209,11 +213,11 @@ function GameContent() {
     }
   };
 
-  // --- 화면 렌더링 ---
+  // --- 렌더링 ---
 
   if (status === "LOADING") return <div className="min-h-screen bg-black text-pink-500 flex items-center justify-center font-bold animate-pulse">LOADING...</div>;
 
-  // A. 잠금 화면
+  // 잠금 화면
   if (status === "LOCKED") {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
@@ -227,7 +231,7 @@ function GameContent() {
     );
   }
 
-  // B. 로그인 화면
+  // 로그인 화면
   if (status === "LOGIN") {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
@@ -242,7 +246,7 @@ function GameContent() {
     );
   }
 
-  // C. 대기실 & 회원가입
+  // 대기실 & 회원가입
   if (status === "INTRO") {
     return (
       <div className="min-h-screen bg-gray-900 text-white p-6 flex flex-col items-center justify-center border-8 border-pink-600 overflow-y-auto">
@@ -268,13 +272,12 @@ function GameContent() {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={`w-full bg-gray-800 border rounded p-3 text-white outline-none focus:border-pink-500 ${password && confirmPassword && password !== confirmPassword ? 'border-red-500' : 'border-gray-600'}`}
+                  className={`w-full bg-gray-800 border rounded p-3 text-white outline-none focus:border-pink-500 ${password && confirmPassword && password.toLowerCase() !== confirmPassword.toLowerCase() ? 'border-red-500' : 'border-gray-600'}`}
                   placeholder="비밀번호 확인"
                 />
               </div>
 
-              {/* 비밀번호 다를 때 경고 문구 */}
-              {password && confirmPassword && password !== confirmPassword && (
+              {password && confirmPassword && password.toLowerCase() !== confirmPassword.toLowerCase() && (
                 <p className="text-red-500 text-xs text-right font-bold">비밀번호가 일치하지 않습니다!</p>
               )}
 
@@ -296,7 +299,7 @@ function GameContent() {
     );
   }
 
-  // D. 메인 화면
+  // 메인 화면
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
       <h1 className="text-5xl font-black text-pink-600 mb-4">DEAD OR PLAY</h1>
