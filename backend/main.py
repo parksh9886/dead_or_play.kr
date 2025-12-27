@@ -29,7 +29,7 @@ app.add_middleware(
 )
 
 # LootLabs 주소
-FIXED_LOOTLABS_URL = "https://loot-link.com/s?M6BOhyGL"
+FIXED_LOOTLABS_URL = "https://loot-link.com/s?eOIZlNE5"
 
 
 # --- [데이터 모델 정의] ---
