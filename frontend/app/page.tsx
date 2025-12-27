@@ -7,46 +7,50 @@ function GameContent() {
   const searchParams = useSearchParams();
   const click_id = searchParams.get("click_id");
 
-  // 상태 관리: IDLE(메인), LOADING(로딩), INTRO(대기실), LOGIN(로그인화면)
+  // 상태 관리
   const [status, setStatus] = useState<"IDLE" | "LOADING" | "INTRO" | "LOGIN">("IDLE");
   const [playerNum, setPlayerNum] = useState("000");
 
   // 회원가입용 상태
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [instagramId, setInstagramId] = useState(""); // [추가] 인스타 핸들
+  const [instagramId, setInstagramId] = useState("");
   const [isRegistered, setIsRegistered] = useState(false);
 
   // 로그인용 상태
   const [loginNum, setLoginNum] = useState("");
   const [loginPw, setLoginPw] = useState("");
 
-  // ⚠️ 백엔드 주소 (본인 것 확인!)
+  // ⚠️ 본인 Render 주소
   const BACKEND_URL = "https://dead-or-play-kr.onrender.com";
 
-  // 1. [신규 입장] 참가하기 버튼
+  // 1. [신규 입장] 참가하기 -> 무조건 신규 티켓 생성
   const createTicket = async () => {
     setStatus("LOADING");
     try {
       const res = await fetch(`${BACKEND_URL}/gate/create`, { method: "POST" });
+
+      // 혹시 서버 에러가 났을 경우 대비
+      if (!res.ok) {
+        throw new Error("서버 응답 오류");
+      }
+
       const data = await res.json();
 
       if (data.lootlabs_url) {
         window.location.href = data.lootlabs_url;
-      } else if (data.is_existing && data.ticket_id) {
-        // 기존 유저면 바로 내 정보 페이지로
-        window.location.href = `/?click_id=${data.ticket_id}`;
       } else {
-        alert("오류가 발생했습니다.");
+        alert("링크 생성 실패");
         setStatus("IDLE");
       }
     } catch (e) {
-      alert("서버 오류");
+      console.error(e);
+      alert("접속량이 많아 연결이 지연되고 있습니다. 잠시 후 다시 시도해주세요.");
       setStatus("IDLE");
     }
   };
 
-  // 2. [페이지 로드 시] 티켓 검증 (복귀 유저)
+  // 2. [페이지 로드 시] 티켓 검증
   useEffect(() => {
     if (click_id) {
       setStatus("LOADING");
@@ -66,7 +70,7 @@ function GameContent() {
     }
   }, [click_id]);
 
-  // 3. [회원가입] 비밀번호 + 인스타ID 저장
+  // 3. [회원가입]
   const handleRegister = async () => {
     if (password.length < 4) return alert("비밀번호는 4자리 이상이어야 합니다.");
     if (password !== confirmPassword) return alert("비밀번호가 서로 다릅니다.");
@@ -79,7 +83,7 @@ function GameContent() {
         body: JSON.stringify({
           click_id: click_id,
           password: password,
-          instagram_id: instagramId // [추가]
+          instagram_id: instagramId
         }),
       });
       const data = await res.json();
@@ -95,7 +99,7 @@ function GameContent() {
     }
   };
 
-  // 4. [로그인] 참가번호 + 비밀번호로 입장
+  // 4. [로그인]
   const handleLogin = async () => {
     if (!loginNum || !loginPw) return alert("정보를 입력해주세요.");
 
@@ -111,7 +115,6 @@ function GameContent() {
       const data = await res.json();
 
       if (data.status === "SUCCESS") {
-        // 로그인 성공 시 해당 유저의 대기실 URL로 이동
         window.location.href = `/?click_id=${data.ticket_id}`;
       } else {
         alert(data.message);
