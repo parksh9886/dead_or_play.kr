@@ -70,7 +70,7 @@ function GameContent() {
 
     if (targetTicket) {
       setStatus("LOADING");
-      if (!urlClickId) sessionStorage.removeItem("pending_ticket");
+//       if (!urlClickId) sessionStorage.removeItem("pending_ticket");
 
       fetch(`${BACKEND_URL}/gate/callback?click_id=${targetTicket}`)
         .then((res) => res.json())
@@ -132,6 +132,7 @@ function GameContent() {
 
       if (res.ok && data.status === "SUCCESS") {
         alert("✅ 등록 완료! 환영합니다.");
+        sessionStorage.removeItem("pending_ticket");
         sessionStorage.setItem("my_ticket", currentTicket);
         setDisplayId(instagramId);
         setIsRegistered(true);
