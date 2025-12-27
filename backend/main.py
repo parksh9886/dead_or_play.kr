@@ -5,14 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# 1. 환경변수 로드
 load_dotenv(".env")
 
 url = os.environ.get("SUPABASE_URL")
 key = os.environ.get("SUPABASE_KEY")
 
 if not url or not key:
-    print("⚠️ 경고: Supabase 환경변수가 설정되지 않았습니다.")
     url = "https://placeholder.supabase.co"
     key = "placeholder"
 
@@ -28,12 +26,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# LootLabs 주소
-FIXED_LOOTLABS_URL = "https://lootdest.org/s?SW5bOAzX"
+FIXED_LOOTLABS_URL = "https://loot-link.com/s?M6BOhyGL"
 
 
-# --- [데이터 모델] ---
-
+# --- 데이터 모델 (깔끔하게 정리됨) ---
 class UserRegister(BaseModel):
     click_id: str
     password: str
@@ -41,29 +37,21 @@ class UserRegister(BaseModel):
 
 
 class UserLogin(BaseModel):
-    player_num: str
+    instagram_id: str  # [핵심] 이제 아이디는 무조건 인스타ID
     password: str
 
 
-# --- [API 정의] ---
+# --- API ---
 
 @app.post("/gate/create")
 def create_ticket():
     try:
-        # 1. 티켓 생성 (빈 객체 삽입 -> ID/Nonce 자동생성)
+        # 티켓 생성 (참가번호는 내부적으로만 생성됨)
         response = supabase.table("tickets").insert({}).execute()
-
-        if not response.data:
-            raise HTTPException(status_code=500, detail="DB 티켓 생성 실패")
-
         ticket_data = response.data[0]
+        nonce = ticket_data['nonce']
 
-        # [안전장치] nonce가 없으면 에러
-        nonce = ticket_data.get('nonce')
-        if not nonce:
-            raise HTTPException(status_code=500, detail="티켓 번호(nonce) 생성 실패")
-
-        # 2. 링크 생성
+        # 광고 링크 생성
         final_link = f"{FIXED_LOOTLABS_URL}&click_id={nonce}"
 
         return {
@@ -71,7 +59,6 @@ def create_ticket():
             "ticket_id": nonce,
             "lootlabs_url": final_link
         }
-
     except Exception as e:
         print(f"❌ 생성 에러: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -80,11 +67,10 @@ def create_ticket():
 @app.get("/gate/callback")
 def verify_ticket(click_id: str = Query(None)):
     try:
-        # 1. 유효성 검사
-        if not click_id or click_id == "{CLICK_ID}" or click_id == "undefined":
+        # 티켓 유효성 검사
+        if not click_id or "{" in click_id or "undefined" in click_id:
             raise HTTPException(status_code=400, detail="티켓 정보가 없습니다.")
 
-        # 2. DB 조회
         res = supabase.table("tickets").select("*").eq("nonce", click_id).execute()
 
         if not res.data:
@@ -92,48 +78,38 @@ def verify_ticket(click_id: str = Query(None)):
 
         ticket = res.data[0]
 
-        # 3. 상태 업데이트 (에러 무시)
+        # 상태 업데이트 (USED 처리)
         try:
-            current_status = ticket.get('status')
-            if current_status != 'USED':
+            if ticket.get('status') != 'USED':
                 supabase.table("tickets").update({"status": "USED"}).eq("nonce", click_id).execute()
-        except Exception as e:
-            print(f"⚠️ 상태 업데이트 경고: {e}")
+        except:
+            pass
 
-        # 4. 참가번호 가져오기 (여기가 에러 원인이었음!)
-        # [수정] id가 없으면 0으로 처리해서 에러 방지
-        real_id = ticket.get('id', 0)
-        formatted_num = f"{real_id:04d}"
-
-        # 5. 비밀번호 유무 확인
-        has_password = ticket.get('password') is not None
-
+        # 프론트엔드에 필요한 정보만 전달
         return {
             "status": "SUCCESS",
-            "player_num": formatted_num,
-            "has_password": has_password,
+            "instagram_id": ticket.get('instagram_id'),  # 없으면 null (회원가입 필요)
+            "has_password": ticket.get('password') is not None,
+            "player_num": f"{ticket.get('id', 0):04d}",  # 내부는 숫자 유지 (배지용)
             "message": "입장 성공"
         }
 
-    except HTTPException as e:
-        raise e
     except Exception as e:
-        print(f"❌ 검증 에러: {e}")
-        # 에러 메시지를 그대로 보내서 원인 파악 용이하게 함
+        print(f"검증 에러: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/gate/register")
 def register_user(user: UserRegister):
     try:
-        res = supabase.table("tickets").select("*").eq("nonce", user.click_id).execute()
-        if not res.data:
-            raise HTTPException(status_code=400, detail="존재하지 않는 사용자입니다.")
+        # 1. 인스타 ID 중복 체크 (다른 사람이 이미 쓰는지)
+        check = supabase.table("tickets").select("*").eq("instagram_id", user.instagram_id).execute()
+        if check.data:
+            # 내 티켓이 아닌데 같은 아이디가 있다면?
+            if check.data[0]['nonce'] != user.click_id:
+                return {"status": "FAIL", "message": "이미 사용 중인 인스타 ID입니다."}
 
-        # 이미 비밀번호가 있는지 체크 (안전하게 .get 사용)
-        if res.data[0].get('password'):
-            return {"status": "FAIL", "message": "이미 등록된 사용자입니다."}
-
+        # 2. 정보 저장
         supabase.table("tickets").update({
             "password": user.password,
             "instagram_id": user.instagram_id
@@ -149,28 +125,21 @@ def register_user(user: UserRegister):
 @app.post("/gate/login")
 def login_user(user: UserLogin):
     try:
-        # "0056" -> 56 변환
-        try:
-            target_id = int(user.player_num)
-        except ValueError:
-            return {"status": "FAIL", "message": "잘못된 참가번호 형식입니다."}
-
-        # DB 조회
-        res = supabase.table("tickets").select("*").eq("id", target_id).execute()
+        # [핵심] 인스타 ID로 유저 찾기
+        res = supabase.table("tickets").select("*").eq("instagram_id", user.instagram_id).execute()
 
         if not res.data:
-            return {"status": "FAIL", "message": "존재하지 않는 참가번호입니다."}
+            return {"status": "FAIL", "message": "존재하지 않는 인스타 ID입니다."}
 
         ticket = res.data[0]
 
-        # 비밀번호 비교 (안전하게 .get 사용)
-        db_password = ticket.get('password')
-        if not db_password or db_password != user.password:
+        # 비밀번호 확인
+        if ticket.get('password') != user.password:
             return {"status": "FAIL", "message": "비밀번호가 일치하지 않습니다."}
 
         return {
             "status": "SUCCESS",
-            "ticket_id": ticket['nonce'],
+            "ticket_id": ticket['nonce'],  # 로그인 성공 시 티켓 ID 반환
             "message": "로그인 성공"
         }
 
