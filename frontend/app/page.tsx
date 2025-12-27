@@ -5,10 +5,10 @@ import { useSearchParams } from "next/navigation";
 
 function GameContent() {
   const searchParams = useSearchParams();
-  const click_id = searchParams.get("click_id");
+  const urlClickId = searchParams.get("click_id"); // URL에 있는 티켓 (혹시 있으면 사용)
 
-  // 상태 관리
-  const [status, setStatus] = useState<"IDLE" | "LOADING" | "INTRO" | "LOGIN">("IDLE");
+  // 상태 관리: LOCKED(잠김) 상태 포함
+  const [status, setStatus] = useState<"IDLE" | "LOADING" | "INTRO" | "LOGIN" | "LOCKED">("IDLE");
   const [playerNum, setPlayerNum] = useState("000");
 
   // 회원가입용 상태
@@ -17,30 +17,35 @@ function GameContent() {
   const [instagramId, setInstagramId] = useState("");
   const [isRegistered, setIsRegistered] = useState(false);
 
-  // 로그인용 상태
+  // 로그인 및 잠금해제용 상태
   const [loginNum, setLoginNum] = useState("");
   const [loginPw, setLoginPw] = useState("");
+  const [unlockPw, setUnlockPw] = useState("");
 
-  // ⚠️ 본인 Render 주소
+  // ⚠️ 백엔드 주소 (본인 Render 주소 확인)
   const BACKEND_URL = "https://dead-or-play-kr.onrender.com";
 
-  // 1. [신규 입장] 참가하기 -> 무조건 신규 티켓 생성
+  // 1. [신규 입장] 참가하기 (세션 저장 방식 적용 🍪)
   const createTicket = async () => {
     setStatus("LOADING");
     try {
       const res = await fetch(`${BACKEND_URL}/gate/create`, { method: "POST" });
 
-      // 혹시 서버 에러가 났을 경우 대비
       if (!res.ok) {
         throw new Error("서버 응답 오류");
       }
 
       const data = await res.json();
 
-      if (data.lootlabs_url) {
+      if (data.lootlabs_url && data.ticket_id) {
+        // [핵심] 떠나기 전에 티켓 번호를 브라우저에 임시 저장!
+        // LootLabs가 티켓을 잃어버리고 보내줘도, 이걸로 기억할 수 있음.
+        sessionStorage.setItem("pending_ticket", data.ticket_id);
+
+        // 광고 페이지로 이동
         window.location.href = data.lootlabs_url;
       } else {
-        alert("링크 생성 실패");
+        alert("티켓 생성에 실패했습니다.");
         setStatus("IDLE");
       }
     } catch (e) {
@@ -50,25 +55,58 @@ function GameContent() {
     }
   };
 
-  // 2. [페이지 로드 시] 티켓 검증
+  // 2. [페이지 로드 시] 티켓 검증 (URL 파라미터 or 저장된 티켓 확인)
   useEffect(() => {
-    if (click_id) {
+    // 1순위: URL에 있는 click_id 사용
+    // 2순위: URL에 없으면 아까 저장해둔 pending_ticket 사용
+    let targetTicket = urlClickId;
+
+    if (!targetTicket) {
+      targetTicket = sessionStorage.getItem("pending_ticket");
+    }
+
+    if (targetTicket) {
       setStatus("LOADING");
-      fetch(`${BACKEND_URL}/gate/callback?click_id=${click_id}`)
+
+      // 사용한 임시 티켓은 삭제 (재사용 방지)
+      if (!urlClickId) {
+        sessionStorage.removeItem("pending_ticket");
+      }
+
+      fetch(`${BACKEND_URL}/gate/callback?click_id=${targetTicket}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.status === "SUCCESS") {
             setPlayerNum(data.player_num);
-            if (data.has_password) setIsRegistered(true);
-            setStatus("INTRO");
+
+            // 비밀번호가 있는 기존 유저인지 확인
+            if (data.has_password) {
+              setIsRegistered(true);
+
+              // 내 기기인지 인증 확인 (자동 로그인)
+              const storedTicket = sessionStorage.getItem("my_ticket");
+
+              if (storedTicket === targetTicket) {
+                setStatus("INTRO"); // 내 폰이면 바로 통과
+              } else {
+                setStatus("LOCKED"); // 남의 폰이나 공유 링크면 잠금 🔒
+              }
+            } else {
+              // 비밀번호 없는 신규 유저 -> 회원가입 화면
+              setStatus("INTRO");
+            }
           } else {
-            alert(data.message);
-            window.location.href = "/";
+            // [수정] 에러 메시지 확실하게 보여주기 (undefined 방지)
+            alert(data.message || data.detail || "알 수 없는 오류가 발생했습니다.");
+            window.location.href = "/"; // 메인으로 쫓아내기
           }
         })
-        .catch(() => setStatus("IDLE"));
+        .catch((e) => {
+          console.error(e);
+          setStatus("IDLE");
+        });
     }
-  }, [click_id]);
+  }, [urlClickId]);
 
   // 3. [회원가입]
   const handleRegister = async () => {
@@ -76,12 +114,15 @@ function GameContent() {
     if (password !== confirmPassword) return alert("비밀번호가 서로 다릅니다.");
     if (instagramId.length < 2) return alert("인스타그램 ID를 입력해주세요.");
 
+    // 현재 사용 중인 티켓 ID 찾기
+    const currentTicket = urlClickId || sessionStorage.getItem("pending_ticket");
+
     try {
       const res = await fetch(`${BACKEND_URL}/gate/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          click_id: click_id,
+          click_id: currentTicket, // 현재 티켓으로 등록
           password: password,
           instagram_id: instagramId
         }),
@@ -90,16 +131,19 @@ function GameContent() {
 
       if (data.status === "SUCCESS") {
         alert("등록 완료! 참가번호와 비밀번호를 꼭 기억하세요.");
+        // 내 브라우저에 인증키 저장 (자동 로그인용)
+        if (currentTicket) sessionStorage.setItem("my_ticket", currentTicket);
         setIsRegistered(true);
+        setStatus("INTRO");
       } else {
-        alert(data.message);
+        alert(data.message || data.detail);
       }
     } catch (e) {
       alert("등록 중 오류 발생");
     }
   };
 
-  // 4. [로그인]
+  // 4. [메인화면 로그인]
   const handleLogin = async () => {
     if (!loginNum || !loginPw) return alert("정보를 입력해주세요.");
 
@@ -115,12 +159,43 @@ function GameContent() {
       const data = await res.json();
 
       if (data.status === "SUCCESS") {
+        // 로그인 성공 시 인증키 저장 후 이동
+        sessionStorage.setItem("my_ticket", data.ticket_id);
         window.location.href = `/?click_id=${data.ticket_id}`;
       } else {
-        alert(data.message);
+        alert(data.message || data.detail);
       }
     } catch (e) {
       alert("로그인 서버 오류");
+    }
+  };
+
+  // 5. [잠금 해제] 공유된 링크로 들어왔을 때 수행
+  const handleUnlock = async () => {
+    if (!unlockPw) return alert("비밀번호를 입력하세요.");
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/gate/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          player_num: playerNum, // 이미 알고 있는 번호
+          password: unlockPw
+        }),
+      });
+      const data = await res.json();
+
+      if (data.status === "SUCCESS") {
+        // 인증 성공!
+        // 티켓 ID를 찾아서 저장 (URL에 있으면 URL 것, 없으면 login 응답 것 사용)
+        const ticketToSave = urlClickId || data.ticket_id;
+        sessionStorage.setItem("my_ticket", ticketToSave);
+        setStatus("INTRO");
+      } else {
+        alert("비밀번호가 일치하지 않습니다.");
+      }
+    } catch (e) {
+      alert("서버 오류");
     }
   };
 
@@ -130,7 +205,37 @@ function GameContent() {
     return <div className="min-h-screen bg-black text-pink-500 flex items-center justify-center font-bold animate-pulse">LOADING...</div>;
   }
 
-  // A. [로그인 화면]
+  // A. [잠금 화면 (보안)]
+  if (status === "LOCKED") {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
+        <div className="text-6xl mb-4">🔒</div>
+        <h2 className="text-2xl font-black text-pink-500 mb-2">접근 제한</h2>
+        <p className="text-gray-400 text-sm mb-8 text-center">
+          참가번호 <b>{playerNum}번</b>의 계정입니다.<br/>
+          본인 확인을 위해 비밀번호를 입력하세요.
+        </p>
+
+        <div className="w-full max-w-xs space-y-4">
+          <input
+            type="password"
+            value={unlockPw}
+            onChange={(e) => setUnlockPw(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-600 rounded p-3 focus:border-pink-500 outline-none text-white"
+            placeholder="비밀번호"
+          />
+          <button onClick={handleUnlock} className="w-full bg-pink-600 font-bold py-4 rounded hover:bg-pink-700 transition-colors">
+            잠금 해제
+          </button>
+          <button onClick={() => window.location.href = "/"} className="w-full text-gray-500 text-sm py-2">
+            메인으로 돌아가기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // B. [로그인 화면]
   if (status === "LOGIN") {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
@@ -170,7 +275,7 @@ function GameContent() {
     );
   }
 
-  // B. [게임 대기실 / 등록 화면]
+  // C. [게임 대기실 / 등록 화면]
   if (status === "INTRO") {
     return (
       <div className="min-h-screen bg-gray-900 text-white p-6 flex flex-col items-center justify-center font-sans border-8 border-pink-600 overflow-y-auto">
@@ -231,7 +336,7 @@ function GameContent() {
     );
   }
 
-  // C. [메인 화면]
+  // D. [메인 화면]
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
       <h1 className="text-5xl font-black text-pink-600 mb-4">DEAD OR PLAY</h1>

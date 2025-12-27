@@ -29,7 +29,7 @@ app.add_middleware(
 )
 
 # LootLabs 주소
-FIXED_LOOTLABS_URL = "https://loot-link.com/s?jXseyryZ"
+FIXED_LOOTLABS_URL = "https://lootdest.org/s?SW5bOAzX"
 
 
 # --- [데이터 모델 정의] ---
@@ -75,9 +75,15 @@ def create_ticket():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# 기존 verify_ticket 함수를 지우고 이걸로 덮어쓰세요
 @app.get("/gate/callback")
-def verify_ticket(click_id: str = Query(...)):
+def verify_ticket(click_id: str = Query(None)):  # None 허용으로 변경
     try:
+        # 1. 티켓 아이디가 아예 안 넘어왔을 때 방어
+        if not click_id or click_id == "{CLICK_ID}" or click_id == "undefined":
+            raise HTTPException(status_code=400, detail="티켓 정보가 없습니다.")
+
+        # 2. 티켓 조회
         res = supabase.table("tickets").select("*").eq("nonce", click_id).execute()
 
         if not res.data:
@@ -85,24 +91,33 @@ def verify_ticket(click_id: str = Query(...)):
 
         ticket = res.data[0]
 
-        # 상태 업데이트
-        supabase.table("tickets").update({"status": "USED"}).eq("nonce", click_id).execute()
+        # 3. 상태 업데이트 (에러나도 무시하고 진행하도록 안전장치 추가)
+        try:
+            current_status = ticket.get('status')
+            if current_status != 'USED':
+                supabase.table("tickets").update({"status": "USED"}).eq("nonce", click_id).execute()
+        except Exception as e:
+            print(f"⚠️ 상태 업데이트 경고 (무시): {e}")
 
         real_id = ticket['id']
         formatted_num = f"{real_id:04d}"
 
+        # 비밀번호 존재 여부 체크 (에러 방지)
         has_password = ticket.get('password') is not None
 
         return {
             "status": "SUCCESS",
             "player_num": formatted_num,
             "has_password": has_password,
-            "message": "게임 대기실 입장"
+            "message": "입장 성공"
         }
 
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+        print(f"❌ 서버 에러: {e}")
+        # 500 에러가 나더라도 클라이언트가 알 수 있게 메시지 전달
+        raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
 
 @app.post("/gate/register")
 def register_user(user: UserRegister):
