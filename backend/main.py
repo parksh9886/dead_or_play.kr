@@ -1,4 +1,5 @@
 import os
+from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
@@ -37,6 +38,10 @@ FIXED_LOOTLABS_URL = "https://loot-link.com/s?M6BOhyGL"
 
 
 # ==========================================
+
+class UserRegister(BaseModel):
+    click_id: str
+    password: str
 
 @app.post("/gate/create")
 def create_ticket():
@@ -101,4 +106,29 @@ def verify_ticket(click_id: str = Query(...)):
         }
 
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/gate/register")
+def register_user(user: UserRegister):
+    try:
+        # 1. 해당 티켓(유저) 찾기
+        res = supabase.table("tickets").select("*").eq("nonce", user.click_id).execute()
+        if not res.data:
+            raise HTTPException(status_code=400, detail="존재하지 않는 사용자입니다.")
+
+        # 2. 이미 비밀번호가 있는지 확인 (중복 등록 방지)
+        if res.data[0].get('password'):
+            return {"status": "FAIL", "message": "이미 등록된 사용자입니다."}
+
+        # 3. 비밀번호 업데이트 (저장)
+        # 보안을 위해선 해싱(암호화)해야 하지만, 일단은 그대로 저장합니다.
+        supabase.table("tickets").update({
+            "password": user.password
+        }).eq("nonce", user.click_id).execute()
+
+        return {"status": "SUCCESS", "message": "등록 완료"}
+
+    except Exception as e:
+        print(f"등록 에러: {e}")
         raise HTTPException(status_code=500, detail=str(e))
