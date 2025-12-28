@@ -17,15 +17,12 @@ export function DeathView({ userState, roundData, eliminatedCount, handleShare }
   );
 }
 
-// 2. 생존자 게임 화면 (잠금 기능 추가됨 🔥)
-export function SurvivorView({ userState, roundData, handleGameAction, isRoundUnlocked, onUnlock }: any) {
-  // 잠금 조건: 라운드가 종료되었는데(CLOSED) && 잠금해제가 안 됐다면(!unlocked)
+// 2. 생존자 게임 화면 (myVote 추가됨)
+export function SurvivorView({ userState, roundData, handleGameAction, isRoundUnlocked, onUnlock, myVote }: any) {
   const isLocked = roundData.status === 'CLOSED' && !isRoundUnlocked;
 
   return (
     <div className="relative bg-black/70 p-6 md:p-8 rounded-3xl border-4 border-pink-600/50 shadow-[0_0_40px_rgba(236,72,153,0.4)] backdrop-blur-md w-full">
-
-      {/* 🔒 잠금 오버레이 (광고 유도) */}
       {isLocked && (
         <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center rounded-3xl p-6 text-center animate-in fade-in">
           <div className="text-6xl mb-4">🔒</div>
@@ -56,7 +53,8 @@ export function SurvivorView({ userState, roundData, handleGameAction, isRoundUn
           <p className="text-gray-300 text-xs md:text-sm break-keep">{roundData.description}</p>
         </div>
 
-        <GameRenderer roundData={roundData} handleGameAction={isLocked ? () => {} : handleGameAction} />
+        {/* 🔥 myVote 전달 */}
+        <GameRenderer roundData={roundData} handleGameAction={isLocked ? () => {} : handleGameAction} myVote={myVote} />
 
         <div className="mt-8 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
           <span className={`w-2 h-2 rounded-full ${roundData.status === 'ACTIVE' ? 'bg-green-500 animate-ping' : 'bg-red-500'}`}></span>
