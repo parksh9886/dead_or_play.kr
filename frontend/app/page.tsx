@@ -70,16 +70,32 @@ function GameContent() {
     }
   };
 
-  // --- 공유하기 (물귀신 작전) ---
-  const handleShare = () => {
-    // 실제 배포된 사이트 주소로 변경해주세요
+// --- 공유하기 (Web Share API 적용) ---
+  const handleShare = async () => {
+    // 실제 배포된 사이트 주소
     const link = "https://dead-or-play-kr.vercel.app/";
+    const title = "DEAD OR PLAY";
+    const text = `💀 [DEAD OR PLAY]\n\n저는 ${userState?.stage}라운드에서 사망했습니다.\n현재까지 총 ${eliminatedCount}명이 탈락했습니다.\n\n당신의 운명을 테스트해보세요.`;
 
-    // 💀 문구 수정: 탈락자 수 강조
-    const text = `💀 [DEAD OR PLAY]\n\n저는 ${userState?.stage}라운드에서 사망했습니다.\n현재까지 총 ${eliminatedCount}명이 탈락했습니다.\n\n당신은 살아남을 수 있을까요?\n지금 확인하기 👉 ${link}`;
+    // 1. 모바일: 기본 공유창 띄우기 (카톡, 인스타 선택 가능)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: title,
+          text: text,
+          url: link,
+        });
+        return; // 공유 성공 시 함수 종료
+      } catch (err) {
+        // 사용자가 취소하거나 에러가 나면 복사하기로 넘어감
+        console.log("공유 취소됨");
+      }
+    }
 
-    navigator.clipboard.writeText(text).then(() => {
-      alert("🩸 초대장이 복사되었습니다!\n친구에게 이 공포를 전파하세요.");
+    // 2. PC 또는 지원 안 하는 브라우저: 클립보드에 복사
+    const copyText = `${text}\n${link}`;
+    navigator.clipboard.writeText(copyText).then(() => {
+      alert("🩸 초대장이 복사되었습니다!\n원하는 곳에 붙여넣기(Ctrl+V) 하세요.");
     });
   };
 
