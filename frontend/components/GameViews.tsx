@@ -1,5 +1,7 @@
 "use client";
 
+import GameRenderer from "./GameRenderer";
+
 // 1. 탈락 화면 (You Died) - 멘트 수정됨
 export function DeathView({ userState, roundData, eliminatedCount, handleShare }: any) {
   return (
