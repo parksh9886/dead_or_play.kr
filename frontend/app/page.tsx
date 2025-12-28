@@ -22,9 +22,7 @@ function GameContent() {
   const [roundData, setRoundData] = useState<any>(null);
   const [eliminatedCount, setEliminatedCount] = useState<number>(0);
 
-  // 🔥 [추가됨] 내가 이 라운드에 투표한 선택지 저장 (없으면 null)
   const [myVote, setMyVote] = useState<string | null>(null);
-
   const [isRoundUnlocked, setIsRoundUnlocked] = useState(false);
 
   const [instagramId, setInstagramId] = useState("");
@@ -46,7 +44,6 @@ function GameContent() {
         const { count } = await supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('is_alive', false);
         setEliminatedCount(count || 0);
 
-        // 🔥 [추가됨] 내 투표 기록 가져오기
         if (round) {
             const { data: vote } = await supabase.from('user_votes').select('choice').eq('ticket_nonce', nonce).eq('round_id', round.id).maybeSingle();
             setMyVote(vote ? vote.choice : null);
@@ -97,8 +94,6 @@ function GameContent() {
   const handleGameAction = async (choice: string) => {
     const nonce = sessionStorage.getItem("my_ticket");
     if (!nonce || !roundData || !userState) return;
-
-    // 🔥 이미 투표했다면 중단 (더블 클릭 방지)
     if (myVote) return toast.warning("이미 투표를 완료했습니다.");
 
     if (roundData.status === 'CLOSED' && !isRoundUnlocked) {
@@ -112,16 +107,17 @@ function GameContent() {
       if (roundData.status === 'ACTIVE') {
          if (!error) {
              toast.success("투표 완료", { description: "결과 발표를 기다려주세요." });
-             setMyVote(choice); // 🔥 화면 즉시 업데이트
+             setMyVote(choice);
          }
          else toast.error("오류 발생");
       }
       else if (roundData.status === 'CLOSED') {
+        // 지각생(후발주자)이 닫힌 라운드 플레이 할 때
         if (choice === roundData.correct_answer) {
           toast.success("✅ 생존했습니다!", { description: "다음 라운드로 이동합니다." });
           await supabase.from('tickets').update({ current_stage: userState.stage + 1 }).eq('nonce', nonce);
           setIsRoundUnlocked(false);
-          setMyVote(null); // 다음 라운드니까 투표 초기화
+          setMyVote(null);
           fetchGameData(nonce);
         } else {
           toast.error("❌ 탈락했습니다.", { description: "당신의 운명은 여기까지입니다." });
@@ -129,6 +125,30 @@ function GameContent() {
           fetchGameData(nonce);
         }
       }
+    }
+  };
+
+  // 🔥 [추가됨] 결과 확인 및 다음 라운드 이동 (투표한 유저용)
+  const handleCheckResult = async () => {
+    const nonce = sessionStorage.getItem("my_ticket");
+    if (!nonce || !myVote || !roundData || !userState) return;
+
+    if (myVote === roundData.correct_answer) {
+         toast.success("🎉 생존 성공!", { description: "다음 라운드로 이동합니다." });
+
+         // 1. 스테이지 업데이트
+         await supabase.from('tickets').update({ current_stage: userState.stage + 1 }).eq('nonce', nonce);
+
+         // 2. 상태 초기화
+         setIsRoundUnlocked(false);
+         setMyVote(null);
+
+         // 3. 데이터 새로고침 (다음 라운드가 있으면 로드, 없으면 WaitingView)
+         fetchGameData(nonce);
+    } else {
+         toast.error("💀 탈락했습니다.", { description: "아쉽지만 여기까지입니다." });
+         await supabase.from('tickets').update({ is_alive: false }).eq('nonce', nonce);
+         fetchGameData(nonce);
     }
   };
 
@@ -247,7 +267,8 @@ function GameContent() {
                     handleGameAction={handleGameAction}
                     isRoundUnlocked={isRoundUnlocked}
                     onUnlock={startLootLabsMission}
-                    myVote={myVote} // 🔥 내 투표 정보 전달
+                    myVote={myVote}
+                    onCheckResult={handleCheckResult} // 🔥 함수 전달
                  />
                ) : <WaitingView />}
              </div>
