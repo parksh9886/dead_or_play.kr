@@ -22,7 +22,7 @@ function GameContent() {
   // 게임 데이터 상태
   const [userState, setUserState] = useState<{ stage: number; isAlive: boolean } | null>(null);
   const [roundData, setRoundData] = useState<any>(null);
-  const [eliminatedCount, setEliminatedCount] = useState<number>(0); // 💀 생존자 대신 탈락자 수 관리
+  const [eliminatedCount, setEliminatedCount] = useState<number>(0);
 
   // 입력값
   const [instagramId, setInstagramId] = useState("");
@@ -37,7 +37,6 @@ function GameContent() {
   // --- [핵심] DB 데이터 로드 ---
   const fetchGameData = async (nonce: string) => {
     try {
-      // 1. 유저 정보 조회
       const { data: user } = await supabase
         .from('tickets')
         .select('current_stage, is_alive')
@@ -47,8 +46,6 @@ function GameContent() {
       if (user) {
         setUserState({ stage: user.current_stage, isAlive: user.is_alive });
 
-        // 2. 라운드 정보 조회
-        // 유저가 죽었더라도 현재 진행 상황을 보여주기 위해 최신 라운드(혹은 본인 라운드) 노출
         const { data: round } = await supabase
           .from('game_rounds')
           .select('*')
@@ -57,11 +54,10 @@ function GameContent() {
 
         setRoundData(round);
 
-        // 3. [수정됨] 전체 탈락자(희생자) 수 카운트 💀
         const { count } = await supabase
           .from('tickets')
           .select('*', { count: 'exact', head: true })
-          .eq('is_alive', false); // false인 사람(죽은 사람)만 셉니다.
+          .eq('is_alive', false);
 
         setEliminatedCount(count || 0);
       }
@@ -70,14 +66,13 @@ function GameContent() {
     }
   };
 
-// --- 공유하기 (Web Share API 적용) ---
+  // --- [핵심] 스마트 공유하기 (Web Share API) ---
   const handleShare = async () => {
-    // 실제 배포된 사이트 주소
     const link = "https://dead-or-play-kr.vercel.app/";
     const title = "DEAD OR PLAY";
     const text = `💀 [DEAD OR PLAY]\n\n저는 ${userState?.stage}라운드에서 사망했습니다.\n현재까지 총 ${eliminatedCount}명이 탈락했습니다.\n\n당신의 운명을 테스트해보세요.`;
 
-    // 1. 모바일: 기본 공유창 띄우기 (카톡, 인스타 선택 가능)
+    // 모바일 기기 자체 공유 UI 실행
     if (navigator.share) {
       try {
         await navigator.share({
@@ -85,18 +80,16 @@ function GameContent() {
           text: text,
           url: link,
         });
-        return; // 공유 성공 시 함수 종료
       } catch (err) {
-        // 사용자가 취소하거나 에러가 나면 복사하기로 넘어감
-        console.log("공유 취소됨");
+        console.log("공유 취소 또는 에러");
       }
+    } else {
+      // PC 또는 지원 안하는 브라우저일 경우 링크 복사
+      const copyText = `${text}\n${link}`;
+      navigator.clipboard.writeText(copyText).then(() => {
+        alert("🩸 초대장이 복사되었습니다!\n친구에게 붙여넣기(Ctrl+V) 하세요.");
+      });
     }
-
-    // 2. PC 또는 지원 안 하는 브라우저: 클립보드에 복사
-    const copyText = `${text}\n${link}`;
-    navigator.clipboard.writeText(copyText).then(() => {
-      alert("🩸 초대장이 복사되었습니다!\n원하는 곳에 붙여넣기(Ctrl+V) 하세요.");
-    });
   };
 
   // --- 투표/퀴즈 액션 ---
@@ -124,7 +117,7 @@ function GameContent() {
     }
   };
 
-  // --- 기존 로직들 (티켓생성, 검증, 회원가입, 로그인) ---
+  // --- 기존 인증 로직 ---
   const createTicket = async () => {
     setStatus("LOADING");
     try {
@@ -252,7 +245,7 @@ function GameContent() {
           </div>
         ) : (
           <div className="w-full max-w-md">
-            {/* 🔥 [탈락자 화면] 탈락자 수 노출 🔥 */}
+            {/* 탈락자 화면 */}
             {userState && !userState.isAlive ? (
               <div className="text-center animate-fade-in bg-black p-8 rounded-3xl border border-red-900 shadow-[0_0_50px_rgba(220,38,38,0.2)]">
                 <h1 className="text-6xl font-black text-red-600 mb-2 tracking-tighter">YOU DIED</h1>
@@ -260,7 +253,6 @@ function GameContent() {
                   당신은 <span className="text-red-500 text-lg">{userState.stage}라운드</span>에서 희생되었습니다.
                 </p>
 
-                {/* 현재 게임 현황판 */}
                 <div className="bg-gray-900 rounded-xl p-4 mb-8 border border-gray-700">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-xs text-gray-500">CURRENT STATUS</span>
@@ -272,21 +264,15 @@ function GameContent() {
                   </p>
                 </div>
 
-                {/* 물귀신 작전 (공유) */}
                 <div className="space-y-3">
                     <p className="text-gray-300 text-sm font-medium">억울하다면 친구를 초대하세요.</p>
                     <button
                       onClick={handleShare}
-                      className="w-full py-4 bg-[#FEE500] text-black font-bold rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                      className="w-full py-5 bg-gradient-to-r from-pink-600 to-purple-600 text-white font-black text-xl rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-pink-500/30 animate-pulse"
                     >
-                      💬 카카오톡 초대장 보내기
+                      📤 친구들에게 생존 신고하기
                     </button>
-                    <button
-                       onClick={handleShare}
-                       className="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2"
-                    >
-                      📸 인스타그램 링크 복사
-                    </button>
+                    <p className="text-xs text-gray-600 mt-2">(카톡/인스타 등으로 초대장이 전송됩니다)</p>
                 </div>
               </div>
             ) : roundData ? (
