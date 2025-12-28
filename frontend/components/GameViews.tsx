@@ -52,17 +52,13 @@ export function SurvivorView({ userState, roundData, handleGameAction }: any) {
         </h2>
         <p className="text-gray-300 text-xs md:text-sm break-keep">{roundData.description}</p>
       </div>
-      <div className="space-y-4">
-        <button onClick={() => handleGameAction('A')} className="w-full py-5 md:py-6 bg-gray-900/80 border-2 border-pink-500/50 rounded-2xl font-black text-xl md:text-2xl text-white hover:bg-pink-600 hover:border-pink-600 transition-all active:scale-95 shadow-lg">
-          {roundData.choice_a}
-        </button>
-        <button onClick={() => handleGameAction('B')} className="w-full py-5 md:py-6 bg-gray-900/80 border-2 border-pink-500/50 rounded-2xl font-black text-xl md:text-2xl text-white hover:bg-pink-600 hover:border-pink-600 transition-all active:scale-95 shadow-lg">
-          {roundData.choice_b}
-        </button>
-      </div>
+
+      {/* 🔥 여기가 핵심 변경: 게임 타입에 따라 화면이 자동 변신함 */}
+      <GameRenderer roundData={roundData} handleGameAction={handleGameAction} />
+
       <div className="mt-8 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
         <span className={`w-2 h-2 rounded-full ${roundData.status === 'ACTIVE' ? 'bg-green-500 animate-ping' : 'bg-red-500'}`}></span>
-        {roundData.status === 'ACTIVE' ? "LIVE: 투표 진행 중" : "CLOSED: 결과 확인"}
+        {roundData.status === 'ACTIVE' ? "LIVE: 진행 중" : "CLOSED: 집계 중"}
       </div>
     </div>
   );

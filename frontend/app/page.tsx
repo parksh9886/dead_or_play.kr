@@ -80,7 +80,59 @@ function GameContent() {
 
   const createTicket = async () => { setStatus("LOADING"); try { const res = await fetch(`${BACKEND_URL}/gate/create`, { method: "POST" }); const data = await res.json(); if (res.ok && data.lootlabs_url) { sessionStorage.setItem("pending_ticket", data.ticket_id); window.location.replace(data.lootlabs_url); } else { setStatus("IDLE"); } } catch (e) { setStatus("IDLE"); } };
   useEffect(() => { let targetTicket = urlClickId || sessionStorage.getItem("pending_ticket") || sessionStorage.getItem("my_ticket"); if (targetTicket) { setStatus("LOADING"); fetch(`${BACKEND_URL}/gate/callback?click_id=${targetTicket}`).then(res => res.json()).then(data => { if (data.status === "SUCCESS") { setDisplayId(data.instagram_id || ""); if (data.has_password) { setIsRegistered(true); const storedTicket = sessionStorage.getItem("my_ticket"); if (storedTicket === targetTicket) { setStatus("INTRO"); fetchGameData(targetTicket); } else setStatus("LOCKED"); } else setStatus("INTRO"); } else window.location.href = "/"; }).catch(() => setStatus("IDLE")); } }, [urlClickId]);
-  const handleRegister = async () => { const cleanId = instagramId.trim().toLowerCase(); const cleanPw = password.trim().toLowerCase(); const currentTicket = urlClickId || sessionStorage.getItem("pending_ticket"); if (!cleanId || cleanPw.length < 4 || cleanPw !== confirmPassword.trim().toLowerCase()) return alert("입력 정보 확인 필요"); try { const res = await fetch(`${BACKEND_URL}/gate/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ click_id: currentTicket, password: cleanPw, instagram_id: cleanId }), }); const data = await res.json(); if (res.ok && data.status === "SUCCESS") { sessionStorage.setItem("my_ticket", currentTicket!); setIsRegistered(true); setStatus("INTRO"); fetchGameData(currentTicket!); } else alert(data.message); } catch (e) { alert("오류 발생"); } };
+  const handleRegister = async () => {
+    // 공백 제거 및 소문자 변환
+    const cleanId = instagramId.trim().toLowerCase();
+    const cleanPw = password.trim().toLowerCase();
+    const currentTicket = urlClickId || sessionStorage.getItem("pending_ticket");
+
+    // 1. 기본 입력값 검사 (아이디 비어있음, 비번 길이, 비번 확인 등)
+    if (!cleanId) return alert("인스타 ID를 입력해주세요.");
+    if (cleanPw.length < 4) return alert("비밀번호는 4자리 이상이어야 합니다.");
+    if (cleanPw !== confirmPassword.trim().toLowerCase()) return alert("비밀번호 확인이 일치하지 않습니다.");
+
+    try {
+      // 🔍 [새로 추가된 부분] 2. Supabase에서 ID 중복 확인
+      const { data: existingUser, error } = await supabase
+        .from('tickets')
+        .select('instagram_id')
+        .eq('instagram_id', cleanId)
+        .maybeSingle(); // 결과가 없으면 null 반환
+
+      if (error) {
+        console.error("중복 확인 에러:", error);
+        return alert("중복 확인 중 오류가 발생했습니다. 다시 시도해주세요.");
+      }
+
+      if (existingUser) {
+        // 이미 아이디가 존재하면 여기서 멈춤 (백엔드 요청 안 보냄)
+        return alert("이미 사용 중인 ID입니다. 다른 ID를 입력해주세요.");
+      }
+
+      // 3. 중복이 아니면 백엔드에 등록 요청 (기존 로직 실행)
+      const res = await fetch(`${BACKEND_URL}/gate/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ click_id: currentTicket, password: cleanPw, instagram_id: cleanId }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.status === "SUCCESS") {
+        sessionStorage.setItem("my_ticket", currentTicket!);
+        setIsRegistered(true);
+        setStatus("INTRO");
+        fetchGameData(currentTicket!);
+        alert("등록 완료! 생존 게임에 오신 것을 환영합니다.");
+      } else {
+        alert(data.message);
+      }
+
+    } catch (e) {
+      console.error(e);
+      alert("오류가 발생했습니다.");
+    }
+  };
   const handleLogin = async () => { const cleanId = loginId.trim().toLowerCase(); const cleanPw = loginPw.trim().toLowerCase(); try { const res = await fetch(`${BACKEND_URL}/gate/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ instagram_id: cleanId, password: cleanPw }), }); const data = await res.json(); if (res.ok && data.status === "SUCCESS") { sessionStorage.setItem("my_ticket", data.ticket_id); window.location.href = `/?click_id=${data.ticket_id}`; } else alert("정보 불일치"); } catch (e) { alert("오류 발생"); } };
   const handleUnlock = async () => { const cleanPw = unlockPw.trim().toLowerCase(); try { const res = await fetch(`${BACKEND_URL}/gate/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ instagram_id: displayId.toLowerCase(), password: cleanPw }), }); const data = await res.json(); if (res.ok && data.status === "SUCCESS") { sessionStorage.setItem("my_ticket", urlClickId || data.ticket_id); setStatus("INTRO"); fetchGameData(urlClickId || data.ticket_id); } else alert("비밀번호 불일치"); } catch (e) { alert("오류 발생"); } };
 
