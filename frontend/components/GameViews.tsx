@@ -1,15 +1,25 @@
 "use client";
 
-// 1. 탈락 화면 (You Died)
+// 1. 탈락 화면 (You Died) - 멘트 수정됨
 export function DeathView({ userState, roundData, eliminatedCount, handleShare }: any) {
   return (
     <div className="text-center animate-fade-in bg-black/70 p-6 md:p-8 rounded-3xl border border-red-900/80 shadow-[0_0_50px_rgba(220,38,38,0.3)] backdrop-blur-md w-full">
       <h1 className="text-5xl md:text-7xl font-black text-red-600 mb-2 tracking-tighter drop-shadow-[0_0_15px_rgba(220,38,38,1)]">
         YOU DIED
       </h1>
-      <p className="text-gray-300 text-sm mb-8 font-bold">
-        당신은 <span className="text-red-500 text-lg">{userState.stage}라운드</span>에서 희생되었습니다.
-      </p>
+
+      {/* 🔥 여기가 변경되었습니다: 몇 번째 희생자인지 강조 */}
+      <div className="mb-8">
+        <p className="text-gray-400 text-sm font-bold mb-1">
+          GAME OVER : STAGE {userState.stage}
+        </p>
+        <p className="text-white text-lg md:text-2xl font-bold mt-4">
+          당신은 <span className="text-red-600 text-4xl md:text-5xl font-black underline decoration-red-900 decoration-4 underline-offset-4">{eliminatedCount}번째</span>
+        </p>
+        <p className="text-white text-lg md:text-2xl font-bold">
+          희생자입니다.
+        </p>
+      </div>
 
       <div className="bg-gray-900/60 rounded-xl p-4 mb-8 border border-gray-700">
         <div className="flex justify-between items-center mb-2">
@@ -17,22 +27,19 @@ export function DeathView({ userState, roundData, eliminatedCount, handleShare }
           <span className="text-xs text-green-500 animate-pulse">● LIVE</span>
         </div>
         <p className="text-lg md:text-xl font-black text-white">{roundData?.title || "게임 진행 중"}</p>
-        <p className="text-sm text-gray-400 mt-2">
-          현재까지 탈락자: <span className="text-red-600 font-black text-xl md:text-2xl">{eliminatedCount}명</span>
-        </p>
       </div>
 
       <div className="space-y-3">
         <button onClick={handleShare} className="w-full py-5 bg-gradient-to-r from-pink-600 to-purple-600 text-white font-black text-lg md:text-xl rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-pink-500/30 animate-pulse">
-          📤 초대장 전송하기
+          📤 유언장 남기기 (공유)
         </button>
-        <p className="text-xs text-gray-500 mt-2">친구도 탈락할까요? 시험해보세요.</p>
+        <p className="text-xs text-gray-500 mt-2">친구도 당신의 뒤를 따를까요?</p>
       </div>
     </div>
   );
 }
 
-// 2. 생존자 게임 화면 (Alive)
+// 2. 생존자 게임 화면 (Alive) - 기존과 동일
 export function SurvivorView({ userState, roundData, handleGameAction }: any) {
   return (
     <div className="bg-black/70 p-6 md:p-8 rounded-3xl border-4 border-pink-600/50 shadow-[0_0_40px_rgba(236,72,153,0.4)] backdrop-blur-md w-full">
@@ -61,7 +68,7 @@ export function SurvivorView({ userState, roundData, handleGameAction }: any) {
   );
 }
 
-// 3. 메인 로비 화면 (Intro/Main)
+// 3. 메인 로비 화면 (Intro/Main) - 기존과 동일
 export function MainLobbyView({ createTicket, setStatus }: any) {
   return (
     <div className="z-10 flex flex-col items-center text-center px-4">

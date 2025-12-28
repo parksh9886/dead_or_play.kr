@@ -2,9 +2,8 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { supabase } from "../lib/supabase"; // 분리한 설정 파일
+import { supabase } from "../lib/supabase";
 
-// 분리한 컴포넌트들 불러오기
 import Background from "../components/Background";
 import { LockedView, LoginView, RegisterView } from "../components/AuthViews";
 import { DeathView, SurvivorView, MainLobbyView } from "../components/GameViews";
@@ -47,14 +46,16 @@ function GameContent() {
     } catch (err) { console.error(err); }
   };
 
+  // 🔥 여기가 수정되었습니다: 공유 멘트 변경
   const handleShare = async () => {
     const link = "https://dead-or-play-kr.vercel.app/";
     const title = "DEAD OR PLAY";
-    const text = `💀 [DEAD OR PLAY]\n\n저는 ${userState?.stage}라운드에서 사망했습니다.\n현재까지 총 ${eliminatedCount}명이 탈락했습니다.\n\n당신의 운명을 테스트해보세요.`;
+    const text = `💀 [DEAD OR PLAY]\n\n저는 ${eliminatedCount}번째 희생자입니다.\n(${userState?.stage}라운드 사망)\n\n당신의 운명을 테스트해보세요.`;
+
     if (navigator.share) {
       try { await navigator.share({ title, text, url: link }); } catch (err) { console.log("취소"); }
     } else {
-      navigator.clipboard.writeText(`${text}\n${link}`).then(() => alert("🩸 초대장이 복사되었습니다!"));
+      navigator.clipboard.writeText(`${text}\n${link}`).then(() => alert("🩸 유언장이 복사되었습니다!"));
     }
   };
 
@@ -86,25 +87,12 @@ function GameContent() {
   // --- 화면 렌더링 ---
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden pt-20 md:pt-32">
-      {/* 1. 배경 및 전광판 */}
       <Background />
 
-      {/* 2. 상태별 화면 분기 */}
-      {status === "LOADING" && (
-        <div className="text-pink-600 font-bold text-2xl animate-pulse z-10">LOADING...</div>
-      )}
-
-      {status === "LOCKED" && (
-        <LockedView displayId={displayId} unlockPw={unlockPw} setUnlockPw={setUnlockPw} handleUnlock={handleUnlock} />
-      )}
-
-      {status === "LOGIN" && (
-        <LoginView loginId={loginId} setLoginId={setLoginId} loginPw={loginPw} setLoginPw={setLoginPw} handleLogin={handleLogin} setStatus={setStatus} />
-      )}
-
-      {status === "IDLE" && (
-        <MainLobbyView createTicket={createTicket} setStatus={setStatus} />
-      )}
+      {status === "LOADING" && <div className="text-pink-600 font-bold text-2xl animate-pulse z-10">LOADING...</div>}
+      {status === "LOCKED" && <LockedView displayId={displayId} unlockPw={unlockPw} setUnlockPw={setUnlockPw} handleUnlock={handleUnlock} />}
+      {status === "LOGIN" && <LoginView loginId={loginId} setLoginId={setLoginId} loginPw={loginPw} setLoginPw={setLoginPw} handleLogin={handleLogin} setStatus={setStatus} />}
+      {status === "IDLE" && <MainLobbyView createTicket={createTicket} setStatus={setStatus} />}
 
       {status === "INTRO" && (
         <div className="z-10 flex flex-col items-center w-full max-w-md">
