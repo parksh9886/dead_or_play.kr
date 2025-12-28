@@ -12,7 +12,7 @@ import { DeathView, SurvivorView, MainLobbyView, WaitingView } from "../componen
 function GameContent() {
   const searchParams = useSearchParams();
   const urlClickId = searchParams.get("click_id");
-  const BACKEND_URL = "https://dead-or-play-kr.onrender.com"; // 🔥 본인 백엔드 주소
+  const BACKEND_URL = "https://dead-or-play-kr.onrender.com"; // 🔥 본인 백엔드 주소 확인
 
   // --- 상태 관리 ---
   const [status, setStatus] = useState<"IDLE" | "LOADING" | "INTRO" | "LOGIN" | "LOCKED">("IDLE");
@@ -191,7 +191,7 @@ function GameContent() {
         sessionStorage.setItem("my_ticket", currentTicket!);
         setIsRegistered(true);
 
-        // 🔥 [버그 수정됨] 여기서 화면에 표시할 ID를 업데이트해줘야 합니다!
+        // 🔥 [버그 수정 완료] 가입 즉시 화면에 ID 표시
         setDisplayId(cleanId);
 
         setStatus("INTRO");
@@ -281,4 +281,43 @@ function GameContent() {
       {status === "IDLE" && <MainLobbyView enterGame={enterGameDirectly} setStatus={setStatus} />}
 
       {status === "INTRO" && (
-        <div
+        <div className="z-10 flex flex-col items-center w-full max-w-md">
+           <div className="bg-white/90 backdrop-blur text-black px-6 py-2 rounded-full font-black text-xl mb-8 shadow-[0_0_15px_rgba(255,255,255,0.5)]">
+             {isRegistered ? `@${displayId}` : "GUEST"}
+           </div>
+
+           {!isRegistered ? (
+             <RegisterView
+                instagramId={instagramId}
+                setInstagramId={setInstagramId}
+                password={password}
+                setPassword={setPassword}
+                confirmPassword={confirmPassword}
+                setConfirmPassword={setConfirmPassword}
+                handleRegister={handleRegister}
+                setStatus={setStatus} // 🔥 뒤로가기를 위해 상태 변경 함수 전달
+             />
+           ) : (
+             <div className="w-full">
+               {userState && !userState.isAlive ? (
+                 <DeathView userState={userState} roundData={roundData} eliminatedCount={eliminatedCount} handleShare={handleShare} />
+               ) : roundData ? (
+                 <SurvivorView
+                    userState={userState}
+                    roundData={roundData}
+                    handleGameAction={handleGameAction}
+                    isRoundUnlocked={isRoundUnlocked}
+                    onUnlock={startLootLabsMission}
+                 />
+               ) : (
+                 <WaitingView />
+               )}
+             </div>
+           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function Page() { return <Suspense fallback={<div className="bg-black min-h-screen"></div>}><GameContent /></Suspense>; }
