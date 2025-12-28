@@ -6,8 +6,7 @@ import { supabase } from "../lib/supabase";
 
 import Background from "../components/Background";
 import { LockedView, LoginView, RegisterView } from "../components/AuthViews";
-import { DeathView, SurvivorView, MainLobbyView } from "../components/GameViews";
-
+import { DeathView, SurvivorView, MainLobbyView, WaitingView } from "../components/GameViews";
 function GameContent() {
   const searchParams = useSearchParams();
   const urlClickId = searchParams.get("click_id");
@@ -161,7 +160,7 @@ function GameContent() {
                ) : roundData ? (
                  <SurvivorView userState={userState} roundData={roundData} handleGameAction={handleGameAction} />
                ) : (
-                 <div className="text-center z-10"><h2 className="text-2xl font-bold text-green-400">준비 중...</h2></div>
+                 <WaitingView />
                )}
              </div>
            )}

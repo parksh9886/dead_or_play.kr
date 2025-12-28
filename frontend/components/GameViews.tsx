@@ -85,3 +85,36 @@ export function MainLobbyView({ createTicket, setStatus }: any) {
     </div>
   );
 }
+
+// 4. 모든 라운드 생존 및 대기 화면 (Waiting)
+export function WaitingView() {
+  // 🔥 [중요] 여기에 본인의 인스타그램 주소를 입력하세요!
+  const ADMIN_INSTA_URL = "https://www.instagram.com/YOUR_INSTAGRAM_ID";
+
+  return (
+    <div className="z-10 flex flex-col items-center text-center p-8 bg-black/70 rounded-3xl border-2 border-green-500/50 backdrop-blur-md max-w-md w-full animate-fade-in shadow-[0_0_30px_rgba(34,197,94,0.3)]">
+      <h2 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 mb-4 tracking-tighter">
+        MISSION COMPLETE
+      </h2>
+      <p className="text-white text-xl md:text-2xl font-bold mb-2">
+        현재까지 모든 라운드 생존.
+      </p>
+      <div className="w-16 h-1 bg-green-500 rounded-full my-6 mx-auto"></div>
+      <p className="text-gray-300 text-sm md:text-base mb-8 leading-relaxed">
+        다음 라운드는 아직 공개되지 않았습니다.<br/>
+        <span className="text-pink-500 font-bold">공식 인스타그램</span>을 팔로우하고<br/>
+        가장 먼저 생존 알림을 받으세요.
+      </p>
+
+      <a
+        href={ADMIN_INSTA_URL}
+        target="_blank" // 새 탭에서 열기
+        rel="noopener noreferrer" // 보안 설정
+        className="w-full py-5 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black text-xl rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg animate-pulse"
+      >
+        📸 인스타 팔로우하고 대기하기
+      </a>
+      <p className="text-xs text-gray-500 mt-4">놓치면 그대로 탈락입니다.</p>
+    </div>
+  );
+}
