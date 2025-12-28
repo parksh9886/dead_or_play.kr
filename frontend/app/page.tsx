@@ -2,18 +2,18 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabase"; // 분리한 설정 불러오기
+import { supabase } from "../lib/supabase"; // 분리한 설정 파일
 
 // 분리한 컴포넌트들 불러오기
-import Background from "@/components/Background";
-import { LockedView, LoginView, RegisterView } from "@/components/AuthViews";
-import { DeathView, SurvivorView, MainLobbyView } from "@/components/GameViews";
+import Background from "../components/Background";
+import { LockedView, LoginView, RegisterView } from "../components/AuthViews";
+import { DeathView, SurvivorView, MainLobbyView } from "../components/GameViews";
 
 function GameContent() {
   const searchParams = useSearchParams();
   const urlClickId = searchParams.get("click_id");
 
-  // --- 상태 관리 (그대로 유지) ---
+  // --- 상태 관리 ---
   const [status, setStatus] = useState<"IDLE" | "LOADING" | "INTRO" | "LOGIN" | "LOCKED">("IDLE");
   const [displayId, setDisplayId] = useState("");
   const [isRegistered, setIsRegistered] = useState(false);
@@ -33,7 +33,7 @@ function GameContent() {
 
   const BACKEND_URL = "https://dead-or-play-kr.onrender.com";
 
-  // --- 기능 로직들 (그대로 유지) ---
+  // --- 기능 로직들 ---
   const fetchGameData = async (nonce: string) => {
     try {
       const { data: user } = await supabase.from('tickets').select('current_stage, is_alive').eq('nonce', nonce).single();
@@ -83,10 +83,10 @@ function GameContent() {
   const handleLogin = async () => { const cleanId = loginId.trim().toLowerCase(); const cleanPw = loginPw.trim().toLowerCase(); try { const res = await fetch(`${BACKEND_URL}/gate/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ instagram_id: cleanId, password: cleanPw }), }); const data = await res.json(); if (res.ok && data.status === "SUCCESS") { sessionStorage.setItem("my_ticket", data.ticket_id); window.location.href = `/?click_id=${data.ticket_id}`; } else alert("정보 불일치"); } catch (e) { alert("오류 발생"); } };
   const handleUnlock = async () => { const cleanPw = unlockPw.trim().toLowerCase(); try { const res = await fetch(`${BACKEND_URL}/gate/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ instagram_id: displayId.toLowerCase(), password: cleanPw }), }); const data = await res.json(); if (res.ok && data.status === "SUCCESS") { sessionStorage.setItem("my_ticket", urlClickId || data.ticket_id); setStatus("INTRO"); fetchGameData(urlClickId || data.ticket_id); } else alert("비밀번호 불일치"); } catch (e) { alert("오류 발생"); } };
 
-  // --- 화면 렌더링 (매우 깔끔해짐!) ---
+  // --- 화면 렌더링 ---
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden pt-32">
-      {/* 1. 배경 및 전광판 (항상 보임) */}
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden pt-20 md:pt-32">
+      {/* 1. 배경 및 전광판 */}
       <Background />
 
       {/* 2. 상태별 화면 분기 */}

@@ -1,4 +1,3 @@
-// src/components/Background.tsx
 "use client";
 
 import CountUp from 'react-countup';
@@ -14,8 +13,8 @@ export default function Background() {
         <p className="text-red-500 text-[10px] md:text-xs font-bold tracking-[0.4em] mb-1 uppercase animate-pulse">
           TOTAL PRIZE POOL
         </p>
-        <div className="font-mono text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-500 to-pink-800 drop-shadow-[0_0_20px_rgba(220,38,38,0.8)]">
-          {/* 상금 연출 */}
+        <div className="font-mono text-4xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-500 to-pink-800 drop-shadow-[0_0_20px_rgba(220,38,38,0.8)]">
+          {/* 모바일에서는 text-4xl, PC에서는 text-7xl로 자동 조절 */}
           ₩ <CountUp start={45600000000} end={45699999999} duration={80000} separator="," />
         </div>
       </div>
