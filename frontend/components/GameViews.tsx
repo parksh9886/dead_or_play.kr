@@ -67,7 +67,7 @@ export function SurvivorView({ userState, roundData, handleGameAction, isRoundUn
   );
 }
 
-// 3. 메인 로비 (수정: 광고 없이 바로 진입)
+// 3. 메인 로비 (로그인 버튼 추가됨)
 export function MainLobbyView({ enterGame, setStatus }: any) {
   return (
     <div className="flex flex-col items-center text-center z-10 animate-fade-in max-w-md w-full">
@@ -76,15 +76,24 @@ export function MainLobbyView({ enterGame, setStatus }: any) {
       </h1>
       <p className="text-gray-300 mb-12 text-lg font-light tracking-widest">운명을 건 서바이벌</p>
 
+      {/* 신규 참가 버튼 */}
       <button
         onClick={enterGame}
-        className="group relative px-12 py-5 bg-pink-600 hover:bg-pink-700 text-white font-black text-2xl rounded-full transition-all hover:scale-105 shadow-[0_0_30px_rgba(236,72,153,0.6)] overflow-hidden"
+        className="group relative w-full max-w-xs px-12 py-5 bg-pink-600 hover:bg-pink-700 text-white font-black text-2xl rounded-full transition-all hover:scale-105 shadow-[0_0_30px_rgba(236,72,153,0.6)] overflow-hidden mb-4"
       >
-        <span className="relative z-10">참가하기</span>
+        <span className="relative z-10">참가하기 (가입)</span>
         <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
       </button>
 
-      <div className="mt-8 grid grid-cols-3 gap-4 text-xs text-gray-500">
+      {/* 👇 [추가됨] 기존 유저 로그인 버튼 */}
+      <button
+        onClick={() => setStatus("LOGIN")}
+        className="text-gray-500 hover:text-white text-sm underline decoration-gray-500 underline-offset-4 transition-colors p-2"
+      >
+        이미 계정이 있으신가요? 로그인
+      </button>
+
+      <div className="mt-12 grid grid-cols-3 gap-4 text-xs text-gray-500 w-full border-t border-gray-800 pt-8">
         <div>💰 총 상금<br/><span className="text-white font-bold text-sm">?? 억원</span></div>
         <div>💀 탈락자<br/><span className="text-red-500 font-bold text-sm">집계 중</span></div>
         <div>⏳ 다음 라운드<br/><span className="text-green-400 font-bold text-sm">대기 중</span></div>
