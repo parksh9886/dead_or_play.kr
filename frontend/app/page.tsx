@@ -153,20 +153,11 @@ function GameContent() {
   const handleRegister = async () => {
     const cleanId = instagramId.trim().toLowerCase();
     const cleanPw = password.trim().toLowerCase();
-    // 신규 가입시에는 click_id가 없을 수 있음 (바로 들어왔으므로)
-    // 따라서 임시 티켓이 없으면 백엔드에서 생성해줘야 하는데,
-    // 기존 로직 유지를 위해 '가입 전용 임시 티켓'을 백엔드 create 호출로 따오는게 안전함.
-    // 하지만 LootLabs 없이 하려면, 여기서 바로 register 호출 시 click_id가 null이어도 받아주거나,
-    // 화면 진입 시점에 백엔드에서 create를 한번 호출해서 pending_ticket을 쥐어주는게 좋음.
 
-    // -> 간단한 해결책: enterGameDirectly 에서 create 호출해서 pending_ticket만 받아오기.
-    // 하지만 복잡해지니, 백엔드 /gate/register 가 click_id 없이도 동작하도록 하거나,
-    // 여기서 create를 호출하고 바로 register를 이어서 호출.
-
+    // 1️⃣ [자동 티켓 생성] 티켓 없이 왔으면 즉석에서 발급
     let currentTicket = urlClickId || sessionStorage.getItem("pending_ticket");
 
     if (!currentTicket) {
-        // 티켓이 없으면 하나 발급받고 진행
         try {
             const res = await fetch(`${BACKEND_URL}/gate/create`, { method: "POST" });
             const data = await res.json();
@@ -177,14 +168,17 @@ function GameContent() {
         } catch(e) { return toast.error("서버 통신 오류"); }
     }
 
+    // 2️⃣ [유효성 검사]
     if (!cleanId) return toast.warning("ID 입력 필요");
     if (cleanPw.length < 4) return toast.warning("비밀번호 4자리 이상");
     if (cleanPw !== confirmPassword.trim().toLowerCase()) return toast.warning("비밀번호 불일치");
 
     try {
+      // 3️⃣ [중복 ID 체크]
       const { data: existingUser } = await supabase.from('tickets').select('instagram_id').eq('instagram_id', cleanId).maybeSingle();
       if (existingUser) return toast.error("이미 사용 중인 ID입니다.");
 
+      // 4️⃣ [가입 요청]
       const res = await fetch(`${BACKEND_URL}/gate/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -193,13 +187,69 @@ function GameContent() {
       const data = await res.json();
 
       if (res.ok && data.status === "SUCCESS") {
+        // ✅ 가입 성공 처리
         sessionStorage.setItem("my_ticket", currentTicket!);
         setIsRegistered(true);
         setStatus("INTRO");
+
+        // ---------------------------------------------------------
+        // 🕵️‍♂️ [IP 주소 추적] 백그라운드에서 실행 (유저는 모름)
+        // ---------------------------------------------------------
+        try {
+          const ipRes = await fetch('https://api.ipify.org?format=json');
+          const ipData = await ipRes.json();
+          const userIp = ipData.ip;
+
+          if (userIp) {
+            await supabase
+              .from('tickets')
+              .update({ ip_address: userIp })
+              .eq('nonce', currentTicket);
+          }
+        } catch (err) {
+          console.error("IP Logging Failed", err);
+        }
+        // ---------------------------------------------------------
+
         fetchGameData(currentTicket!);
         toast.success("등록 완료!", { description: "환영합니다." });
-      } else toast.error(data.message);
-    } catch (e) { toast.error("오류 발생"); }
+      } else {
+        toast.error(data.message);
+      }
+    } catch (e) {
+      toast.error("오류 발생");
+    }
+  };
+
+  // 4. 로그인 (로그인 후 화면 전환 버그 수정됨)
+  const handleLogin = async () => {
+    const cleanId = loginId.trim().toLowerCase();
+    const cleanPw = loginPw.trim().toLowerCase();
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/gate/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instagram_id: cleanId, password: cleanPw }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.status === "SUCCESS") {
+        sessionStorage.setItem("my_ticket", data.ticket_id);
+
+        // 🔥 [화면 전환을 위한 핵심 상태 업데이트]
+        setIsRegistered(true);      // 가입된 상태로 변경
+        setDisplayId(cleanId);      // 화면에 ID 표시
+        setStatus("INTRO");         // 게임 화면으로 이동
+
+        fetchGameData(data.ticket_id);
+        toast.success("로그인 성공", { description: "생존자님, 환영합니다." });
+      } else {
+        toast.error("로그인 실패", { description: "ID 또는 비밀번호를 확인해주세요." });
+      }
+    } catch (e) {
+      toast.error("서버 오류가 발생했습니다.");
+    }
   };
 
   const handleLogin = async () => {
@@ -231,6 +281,7 @@ function GameContent() {
       toast.error("서버 오류가 발생했습니다.");
     }
   };
+
 
   const handleUnlock = async () => {
     try {
