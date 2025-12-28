@@ -6,7 +6,7 @@ import { supabase } from "../../lib/supabase";
 export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [password, setPassword] = useState("");
-  const ADMIN_PASS = "1234"; // 🚨 배포 전 변경 필수
+  const ADMIN_PASS = "1234"; // 🚨 배포 전 변경 필수!
 
   const [rounds, setRounds] = useState<any[]>([]);
 
@@ -15,13 +15,16 @@ export default function AdminPage() {
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [adUrl, setAdUrl] = useState("");
+  const [correctAnswer, setCorrectAnswer] = useState("");
+
+  // 🔥 [추가됨] 라운드 상태 (ACTIVE / CLOSED) 직접 변경용
+  const [roundStatus, setRoundStatus] = useState("ACTIVE");
 
   // 게임별 설정값
   const [optionA, setOptionA] = useState("");
   const [optionB, setOptionB] = useState("");
   const [quizPlaceholder, setQuizPlaceholder] = useState("");
 
-  // 수정 모드 상태 (null이면 생성 모드, 숫자가 있으면 해당 ID 수정 중)
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const checkLogin = () => { if (password === ADMIN_PASS) { setIsAdmin(true); fetchRounds(); } else alert("비번 틀림"); };
@@ -31,7 +34,7 @@ export default function AdminPage() {
     if (data) setRounds(data);
   };
 
-  // 라운드 종료
+  // 라운드 종료 (빠른 버튼용)
   const closeRound = async (id: number, answerInput: string) => {
     if (!confirm(`정답을 [ ${answerInput} ]로 확정하고 종료하시겠습니까?`)) return;
     const { error } = await supabase.from('game_rounds').update({ status: 'CLOSED', correct_answer: answerInput }).eq('id', id);
@@ -51,13 +54,20 @@ export default function AdminPage() {
 
     if (editingId) {
       // 🔄 수정 모드 (UPDATE)
-      const { error } = await supabase.from('game_rounds').update({
+      const updatePayload: any = {
         title,
         description: desc,
         ad_url: adUrl,
-        config, // 주의: 기존 config를 덮어씁니다.
-        game_type: gameType
-      }).eq('id', editingId);
+        config,
+        game_type: gameType,
+        status: roundStatus // 🔥 상태 변경 반영
+      };
+
+      if (correctAnswer) {
+        updatePayload.correct_answer = correctAnswer;
+      }
+
+      const { error } = await supabase.from('game_rounds').update(updatePayload).eq('id', editingId);
 
       if (!error) {
         alert("수정되었습니다.");
@@ -75,7 +85,7 @@ export default function AdminPage() {
         game_type: gameType,
         config,
         ad_url: adUrl,
-        status: 'ACTIVE'
+        status: 'ACTIVE' // 생성할 땐 무조건 ACTIVE
       });
 
       if (!error) {
@@ -86,27 +96,29 @@ export default function AdminPage() {
     }
   };
 
-  // 수정 버튼 클릭 시 폼에 데이터 채우기
   const startEdit = (round: any) => {
     setEditingId(round.id);
     setGameType(round.game_type);
     setTitle(round.title);
     setDesc(round.description);
     setAdUrl(round.ad_url || "");
+    setCorrectAnswer(round.correct_answer || "");
+    setRoundStatus(round.status); // 🔥 기존 상태 불러오기
 
     if (round.game_type === 'VOTE') {
-      setOptionA(round.config.options[0]);
-      setOptionB(round.config.options[1]);
+      setOptionA(round.config.options ? round.config.options[0] : "");
+      setOptionB(round.config.options ? round.config.options[1] : "");
     } else if (round.game_type === 'QUIZ') {
-      setQuizPlaceholder(round.config.placeholder);
+      setQuizPlaceholder(round.config.placeholder || "");
     }
 
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // 맨 위로 스크롤
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const resetForm = () => {
     setEditingId(null);
-    setTitle(""); setDesc(""); setAdUrl(""); setOptionA(""); setOptionB(""); setQuizPlaceholder("");
+    setTitle(""); setDesc(""); setAdUrl(""); setOptionA(""); setOptionB(""); setQuizPlaceholder(""); setCorrectAnswer("");
+    setRoundStatus("ACTIVE");
   };
 
   if (!isAdmin) return <div className="bg-black min-h-screen text-white p-10 text-center"><input type="password" onChange={e=>setPassword(e.target.value)} className="text-black p-2" /><button onClick={checkLogin} className="bg-red-500 p-2 ml-2">Login</button></div>;
@@ -131,6 +143,27 @@ export default function AdminPage() {
           <input className="bg-gray-800 p-3 rounded" placeholder="설명" value={desc} onChange={e=>setDesc(e.target.value)} />
           <input className="bg-gray-800 p-3 rounded border border-yellow-600/50" placeholder="🔒 LootLabs 링크 (수정 가능)" value={adUrl} onChange={e=>setAdUrl(e.target.value)} />
 
+          {/* 🔥 수정 모드일 때만 보이는 고급 설정 (정답 & 상태) */}
+          {editingId && (
+             <div className="grid grid-cols-2 gap-4 bg-gray-800/50 p-4 rounded border border-gray-600">
+               <div>
+                  <label className="text-xs text-gray-400 block mb-1">상태 변경 (부활/종료)</label>
+                  <select
+                    value={roundStatus}
+                    onChange={(e) => setRoundStatus(e.target.value)}
+                    className="w-full bg-black p-2 rounded text-white font-bold"
+                  >
+                    <option value="ACTIVE">🟢 ACTIVE (진행 중)</option>
+                    <option value="CLOSED">🔴 CLOSED (종료됨)</option>
+                  </select>
+               </div>
+               <div>
+                 <label className="text-xs text-red-400 block mb-1">정답 강제 수정</label>
+                 <input className="bg-black p-2 rounded w-full text-white" placeholder="예: A" value={correctAnswer} onChange={e=>setCorrectAnswer(e.target.value)} />
+               </div>
+             </div>
+          )}
+
           {gameType === 'VOTE' && (
             <div className="flex gap-4">
               <input className="bg-gray-800 p-3 rounded w-1/2" placeholder="선택지 A" value={optionA} onChange={e=>setOptionA(e.target.value)} />
@@ -150,12 +183,11 @@ export default function AdminPage() {
       <div className="space-y-4">
         {rounds.map((round) => (
           <div key={round.id} className="bg-gray-800 p-6 rounded-xl border border-gray-700 relative">
-            {/* 수정 버튼 추가 */}
             <button onClick={() => startEdit(round)} className="absolute top-6 right-6 text-sm bg-gray-700 px-3 py-1 rounded hover:bg-gray-600">
               ✏️ 수정
             </button>
 
-            <div className="pr-16"> {/* 수정 버튼 공간 확보 */}
+            <div className="pr-16">
                <h3 className="font-bold text-lg"><span className="text-pink-500">[{round.game_type}]</span> {round.title}</h3>
                <span className={round.status === 'ACTIVE' ? 'text-green-500' : 'text-red-500'}>{round.status}</span>
             </div>
@@ -179,7 +211,12 @@ export default function AdminPage() {
                  )}
                </div>
             )}
-            {round.status === 'CLOSED' && <p className="text-gray-500 mt-2">정답: {round.correct_answer}</p>}
+            {round.status === 'CLOSED' && (
+                <div className="mt-2 text-sm">
+                    <span className="text-gray-400">정답: </span>
+                    <span className="text-white font-bold text-lg">{round.correct_answer}</span>
+                </div>
+            )}
           </div>
         ))}
       </div>
