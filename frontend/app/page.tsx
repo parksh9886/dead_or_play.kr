@@ -12,7 +12,7 @@ import { DeathView, SurvivorView, MainLobbyView, WaitingView } from "../componen
 function GameContent() {
   const searchParams = useSearchParams();
   const urlClickId = searchParams.get("click_id");
-  const BACKEND_URL = "https://dead-or-play-kr.onrender.com"; // 🔥 본인 백엔드 주소 확인
+  const BACKEND_URL = "https://dead-or-play-kr.onrender.com"; // 🔥 본인 백엔드 주소
 
   // --- 상태 관리 ---
   const [status, setStatus] = useState<"IDLE" | "LOADING" | "INTRO" | "LOGIN" | "LOCKED">("IDLE");
@@ -252,36 +252,7 @@ function GameContent() {
     }
   };
 
-  const handleLogin = async () => {
-    const cleanId = loginId.trim().toLowerCase();
-    const cleanPw = loginPw.trim().toLowerCase();
-
-    try {
-      const res = await fetch(`${BACKEND_URL}/gate/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ instagram_id: cleanId, password: cleanPw }),
-      });
-      const data = await res.json();
-
-      if (res.ok && data.status === "SUCCESS") {
-        sessionStorage.setItem("my_ticket", data.ticket_id);
-
-        // 🔥 [이 부분이 추가되었습니다!]
-        setIsRegistered(true);      // "이 사람은 가입된 유저입니다"
-        setDisplayId(cleanId);      // 화면에 아이디 표시 (@아이디)
-
-        setStatus("INTRO");         // 게임 화면으로 이동
-        fetchGameData(data.ticket_id);
-        toast.success("로그인 성공", { description: "생존자님, 환영합니다." });
-      } else {
-        toast.error("로그인 실패", { description: "ID 또는 비밀번호를 확인해주세요." });
-      }
-    } catch (e) {
-      toast.error("서버 오류가 발생했습니다.");
-    }
-  };
-
+  // (여기에 중복되었던 handleLogin은 제거했습니다)
 
   const handleUnlock = async () => {
     try {
