@@ -154,7 +154,7 @@ function GameContent() {
     const cleanId = instagramId.trim().toLowerCase();
     const cleanPw = password.trim().toLowerCase();
 
-    // 1️⃣ [자동 티켓 생성] 티켓 없이 왔으면 즉석에서 발급
+    // 1️⃣ [자동 티켓 생성]
     let currentTicket = urlClickId || sessionStorage.getItem("pending_ticket");
 
     if (!currentTicket) {
@@ -190,25 +190,23 @@ function GameContent() {
         // ✅ 가입 성공 처리
         sessionStorage.setItem("my_ticket", currentTicket!);
         setIsRegistered(true);
+
+        // 🔥 [버그 수정됨] 여기서 화면에 표시할 ID를 업데이트해줘야 합니다!
+        setDisplayId(cleanId);
+
         setStatus("INTRO");
 
         // ---------------------------------------------------------
-        // 🕵️‍♂️ [IP 주소 추적] 백그라운드에서 실행 (유저는 모름)
+        // 🕵️‍♂️ [IP 주소 추적]
         // ---------------------------------------------------------
         try {
           const ipRes = await fetch('https://api.ipify.org?format=json');
           const ipData = await ipRes.json();
           const userIp = ipData.ip;
-
           if (userIp) {
-            await supabase
-              .from('tickets')
-              .update({ ip_address: userIp })
-              .eq('nonce', currentTicket);
+            await supabase.from('tickets').update({ ip_address: userIp }).eq('nonce', currentTicket);
           }
-        } catch (err) {
-          console.error("IP Logging Failed", err);
-        }
+        } catch (err) { console.error("IP Logging Failed", err); }
         // ---------------------------------------------------------
 
         fetchGameData(currentTicket!);
@@ -221,7 +219,6 @@ function GameContent() {
     }
   };
 
-  // 4. 로그인 (로그인 후 화면 전환 버그 수정됨)
   const handleLogin = async () => {
     const cleanId = loginId.trim().toLowerCase();
     const cleanPw = loginPw.trim().toLowerCase();
@@ -237,11 +234,10 @@ function GameContent() {
       if (res.ok && data.status === "SUCCESS") {
         sessionStorage.setItem("my_ticket", data.ticket_id);
 
-        // 🔥 [화면 전환을 위한 핵심 상태 업데이트]
-        setIsRegistered(true);      // 가입된 상태로 변경
-        setDisplayId(cleanId);      // 화면에 ID 표시
-        setStatus("INTRO");         // 게임 화면으로 이동
-
+        // 로그인 성공 시 상태 업데이트
+        setIsRegistered(true);
+        setDisplayId(cleanId);
+        setStatus("INTRO");
         fetchGameData(data.ticket_id);
         toast.success("로그인 성공", { description: "생존자님, 환영합니다." });
       } else {
@@ -251,8 +247,6 @@ function GameContent() {
       toast.error("서버 오류가 발생했습니다.");
     }
   };
-
-  // (여기에 중복되었던 handleLogin은 제거했습니다)
 
   const handleUnlock = async () => {
     try {
@@ -287,34 +281,4 @@ function GameContent() {
       {status === "IDLE" && <MainLobbyView enterGame={enterGameDirectly} setStatus={setStatus} />}
 
       {status === "INTRO" && (
-        <div className="z-10 flex flex-col items-center w-full max-w-md">
-           <div className="bg-white/90 backdrop-blur text-black px-6 py-2 rounded-full font-black text-xl mb-8 shadow-[0_0_15px_rgba(255,255,255,0.5)]">
-             {isRegistered ? `@${displayId}` : "GUEST"}
-           </div>
-
-           {!isRegistered ? (
-             <RegisterView instagramId={instagramId} setInstagramId={setInstagramId} password={password} setPassword={setPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} handleRegister={handleRegister} />
-           ) : (
-             <div className="w-full">
-               {userState && !userState.isAlive ? (
-                 <DeathView userState={userState} roundData={roundData} eliminatedCount={eliminatedCount} handleShare={handleShare} />
-               ) : roundData ? (
-                 <SurvivorView
-                    userState={userState}
-                    roundData={roundData}
-                    handleGameAction={handleGameAction}
-                    isRoundUnlocked={isRoundUnlocked}
-                    onUnlock={startLootLabsMission} // 🔑 잠금 해제 함수 전달
-                 />
-               ) : (
-                 <WaitingView />
-               )}
-             </div>
-           )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default function Page() { return <Suspense fallback={<div className="bg-black min-h-screen"></div>}><GameContent /></Suspense>; }
+        <div

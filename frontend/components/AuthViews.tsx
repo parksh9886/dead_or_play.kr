@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 // 1. 잠금 화면 (비밀번호 입력)
 export function LockedView({ displayId, unlockPw, setUnlockPw, handleUnlock }: any) {
   return (
@@ -74,8 +72,8 @@ export function LoginView({ loginId, setLoginId, loginPw, setLoginPw, handleLogi
   );
 }
 
-// 3. 회원가입 화면 (🔥 경고 문구 추가됨)
-export function RegisterView({ instagramId, setInstagramId, password, setPassword, confirmPassword, setConfirmPassword, handleRegister }: any) {
+// 3. 회원가입 화면 (🔥 뒤로가기 버튼 추가됨 + setStatus props 추가)
+export function RegisterView({ instagramId, setInstagramId, password, setPassword, confirmPassword, setConfirmPassword, handleRegister, setStatus }: any) {
   return (
     <div className="w-full bg-black/60 backdrop-blur-md p-6 rounded-3xl border border-gray-800 shadow-2xl animate-fade-in">
       <h2 className="text-2xl font-black text-center text-white mb-2">신규 참가자 등록</h2>
@@ -143,7 +141,15 @@ export function RegisterView({ instagramId, setInstagramId, password, setPasswor
         서약하고 참가하기
       </button>
 
-      <p className="text-center text-[10px] text-gray-600 mt-4">
+      {/* 👇 [추가됨] 뒤로가기 버튼 */}
+      <button
+        onClick={() => setStatus("IDLE")}
+        className="w-full mt-4 py-3 text-gray-500 text-sm hover:text-white hover:bg-white/5 rounded-xl transition-all"
+      >
+        ← 잘못 눌렀어요 (뒤로 가기)
+      </button>
+
+      <p className="text-center text-[10px] text-gray-600 mt-2">
         참가 버튼을 누르면 위 규칙에 동의하는 것으로 간주합니다.
       </p>
     </div>
