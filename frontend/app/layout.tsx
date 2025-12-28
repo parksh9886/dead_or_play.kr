@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 
-// 👇 추가된 라이브러리 (없으면 에러나니 꼭 npm install 하세요)
+// 👇 라이브러리 임포트
 import { Toaster } from 'sonner';
 import { Analytics } from "@vercel/analytics/react";
 
@@ -30,11 +30,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: "DEAD OR PLAY - 서바이벌 게임",
     description: "현재 당신의 친구들이 탈락하고 있습니다. 살아남을 수 있겠습니까?",
-    url: "https://dead-or-play-kr.vercel.app", // 나중에 도메인 사면 여기 바꾸세요!
+    url: "https://dead-or-play-kr.vercel.app",
     siteName: "DEAD OR PLAY",
     images: [
       {
-        url: "/og-image.png", // public 폴더에 이 이름으로 이미지를 넣으세요!
+        url: "/og-image.png",
         width: 1200,
         height: 630,
       },
@@ -56,13 +56,24 @@ export default function RootLayout({
       >
         {children}
 
-        {/* 3. 예쁜 알림창 (alert 대신 사용) */}
-        <Toaster position="top-center" richColors />
+        {/* 3. 알림창 설정 (수정됨: 광클 방지 & 위치 조정) */}
+        <Toaster
+          position="top-center"   // 상단 중앙 (모바일 키보드 간섭 최소화)
+          visibleToasts={1}       // 🔥 한번에 1개만 표시 (광클해도 알림창 안 쌓임)
+          closeButton={true}      // 닫기 버튼 추가
+          theme="dark"            // 다크 모드
+          duration={2000}         // 2초 뒤 자동 삭제
+          style={{
+            marginTop: '10px',    // 모바일 상단 여백 확보
+            fontWeight: 'bold'
+          }}
+          // richColors={true}  <-- 요청하신 대로 뺐습니다!
+        />
 
         {/* 4. 방문자 통계 (Vercel Analytics) */}
         <Analytics />
 
-        {/* 5. AdMaven 광고 스크립트들 */}
+        {/* 5. AdMaven 광고 스크립트들 (그대로 유지) */}
         {/* AdMaven Pop (팝언더/인페이지 푸시) - ID: 1233768 */}
         <Script
           id="admaven-pop"

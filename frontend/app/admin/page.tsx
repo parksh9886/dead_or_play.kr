@@ -66,15 +66,12 @@ export default function AdminPage() {
       const { error } = await supabase.from('game_rounds').update(updatePayload).eq('id', editingId);
 
       if (!error) {
-        // 🔥 [추가됨] ACTIVE로 되돌릴 때: 해당 라운드 유저 부활 & 투표 기록 삭제
+        // 🔥 [수정됨] ACTIVE로 되돌릴 때: 탈락자 부활만 수행 (투표 기록 삭제는 위험하므로 제거)
         if (roundStatus === 'ACTIVE') {
-           // 1. 부활 (이 스테이지에 있는 탈락자들 살리기)
+           // 부활 (이 스테이지에 있는 탈락자들 살리기)
            await supabase.from('tickets').update({ is_alive: true }).eq('current_stage', editingId);
 
-           // 2. 기록 삭제 (틀린 답 낸 기록 지워줘야 다시 투표 가능)
-           await supabase.from('user_votes').delete().eq('round_id', editingId);
-
-           alert(`수정 완료! (라운드 ${editingId}의 참가자 전원 부활 및 초기화됨)`);
+           alert(`수정 완료! (라운드 ${editingId}의 탈락자 전원 부활 처리됨)`);
         } else {
            alert("수정되었습니다.");
         }
@@ -160,7 +157,7 @@ export default function AdminPage() {
                     onChange={(e) => setRoundStatus(e.target.value)}
                     className="w-full bg-black p-2 rounded text-white font-bold"
                   >
-                    <option value="ACTIVE">🟢 ACTIVE (진행 중 - 초기화됨)</option>
+                    <option value="ACTIVE">🟢 ACTIVE (진행 중 - 부활)</option>
                     <option value="CLOSED">🔴 CLOSED (종료됨)</option>
                   </select>
                </div>

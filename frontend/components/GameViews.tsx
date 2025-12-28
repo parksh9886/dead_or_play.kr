@@ -18,20 +18,15 @@ export function DeathView({ userState, roundData, eliminatedCount, handleShare }
 }
 
 // 2. 생존자 게임 화면 (myVote 추가됨)
-export function SurvivorView({ userState, roundData, handleGameAction, isRoundUnlocked, onUnlock, myVote, onCheckResult }: any) {
+export function SurvivorView({ userState, roundData, handleGameAction, isRoundUnlocked, onUnlock, myVote, onCheckResult, isProcessing }: any) {
 
-  // 🔥 [핵심 수정] 내가 투표했으면(!myVote) 잠그지 마라!
-  // 잠금 조건: 종료됨 AND 잠금해제 안됨 AND 투표도 안 함(지각생)
   const isLocked = roundData.status === 'CLOSED' && !isRoundUnlocked && !myVote;
-
-  // 🔥 [추가] 결과 확인 버튼 보여줄 조건
-  // 종료됨 AND 내가 투표함
   const showResultButton = roundData.status === 'CLOSED' && myVote;
 
   return (
     <div className="relative bg-black/70 p-6 md:p-8 rounded-3xl border-4 border-pink-600/50 shadow-[0_0_40px_rgba(236,72,153,0.4)] backdrop-blur-md w-full">
 
-      {/* 🔒 잠금 오버레이 (지각생 전용) */}
+      {/* 🔒 잠금 오버레이 */}
       {isLocked && (
         <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center rounded-3xl p-6 text-center animate-in fade-in">
           <div className="text-6xl mb-4">🔒</div>
@@ -51,7 +46,8 @@ export function SurvivorView({ userState, roundData, handleGameAction, isRoundUn
         </div>
       )}
 
-      <div className={`transition-all ${isLocked ? 'blur-sm opacity-50' : ''}`}>
+      {/* 🔥 [추가됨] 처리 중일 때 화면 전체 흐리게 처리 (클릭 방지) */}
+      <div className={`transition-all ${isLocked || isProcessing ? 'blur-sm opacity-50 pointer-events-none' : ''}`}>
         <div className="text-center mb-8">
           <div className="inline-block bg-pink-600 px-4 py-1 rounded-full text-xs font-bold mb-4 shadow-lg">
             STAGE {userState?.stage}
@@ -64,7 +60,6 @@ export function SurvivorView({ userState, roundData, handleGameAction, isRoundUn
 
         <GameRenderer roundData={roundData} handleGameAction={isLocked ? () => {} : handleGameAction} myVote={myVote} />
 
-        {/* 🔥 [추가됨] 결과 확인 버튼 영역 */}
         {showResultButton && (
           <div className="mt-8 animate-in slide-in-from-bottom-4 fade-in duration-500">
              <div className="bg-green-900/40 border border-green-500/50 rounded-xl p-4 text-center">
@@ -73,9 +68,10 @@ export function SurvivorView({ userState, roundData, handleGameAction, isRoundUn
 
                 <button
                   onClick={onCheckResult}
-                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-black py-4 rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.4)] transition-all active:scale-95 flex items-center justify-center gap-2"
+                  disabled={isProcessing} // 버튼 잠금
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-black py-4 rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.4)] transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  💀 생존 여부 확인 (다음 라운드)
+                  {isProcessing ? "처리 중..." : "💀 생존 여부 확인 (다음 라운드)"}
                 </button>
              </div>
           </div>
