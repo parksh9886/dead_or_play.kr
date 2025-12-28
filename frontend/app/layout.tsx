@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script"; // 1. Script 컴포넌트 불러오기
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,11 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  // 1. 사이트 이름과 설명 수정 (선택사항)
+  // 사이트 정보
   title: "DEAD OR PLAY",
   description: "운명을 건 서바이벌 게임",
 
-  // 2. AdMaven 인증 태그 추가 (필수) ✅
+  // AdMaven 소유권 인증 태그
   other: {
     "admaven-placement": "BrHr5qHs4",
   },
@@ -29,12 +30,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // 3. 한국어 사이트이므로 언어 설정을 "ko"로 변경
     <html lang="ko">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+
+        {/* 2. AdMaven 광고 스크립트 (Pop + Interstitial 통합)
+          - ID(1233768)가 같으므로 이 한 줄로 두 광고 형식이 모두 제어됩니다.
+          - strategy="afterInteractive": 페이지가 로드된 직후에 광고를 불러와 속도 저하를 막습니다.
+          - data-cfasync="false": 클라우드플레어 등 외부 간섭을 방지합니다.
+        */}
+        <Script
+          id="admaven-script"
+          src="//dcbbwymp1bhlf.cloudfront.net/?wbbcd=1233768"
+          strategy="afterInteractive"
+          data-cfasync="false"
+        />
       </body>
     </html>
   );
