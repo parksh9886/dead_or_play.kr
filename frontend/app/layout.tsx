@@ -67,7 +67,7 @@ export default function RootLayout({
             marginTop: '10px',    // 모바일 상단 여백 확보
             fontWeight: 'bold'
           }}
-          // richColors={true}  <-- 요청하신 대로 뺐습니다!
+          richColors={true}  // <-- 요청하신 대로 뺐습니다!
         />
 
         {/* 4. 방문자 통계 (Vercel Analytics) */}
