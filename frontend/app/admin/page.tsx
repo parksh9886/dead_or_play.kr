@@ -6,7 +6,7 @@ import { supabase } from "../../lib/supabase";
 export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [password, setPassword] = useState("");
-  const ADMIN_PASS = "1234"; // 🚨 배포 전 변경 필수!
+  const ADMIN_PASS = "1234";
 
   const [rounds, setRounds] = useState<any[]>([]);
 
@@ -17,10 +17,8 @@ export default function AdminPage() {
   const [adUrl, setAdUrl] = useState("");
   const [correctAnswer, setCorrectAnswer] = useState("");
 
-  // 🔥 [추가됨] 라운드 상태 (ACTIVE / CLOSED) 직접 변경용
   const [roundStatus, setRoundStatus] = useState("ACTIVE");
 
-  // 게임별 설정값
   const [optionA, setOptionA] = useState("");
   const [optionB, setOptionB] = useState("");
   const [quizPlaceholder, setQuizPlaceholder] = useState("");
@@ -34,14 +32,12 @@ export default function AdminPage() {
     if (data) setRounds(data);
   };
 
-  // 라운드 종료 (빠른 버튼용)
   const closeRound = async (id: number, answerInput: string) => {
     if (!confirm(`정답을 [ ${answerInput} ]로 확정하고 종료하시겠습니까?`)) return;
     const { error } = await supabase.from('game_rounds').update({ status: 'CLOSED', correct_answer: answerInput }).eq('id', id);
     if (!error) { alert("종료됨"); fetchRounds(); }
   };
 
-  // 생성 또는 수정 처리
   const handleSaveRound = async () => {
     if (!title) return alert("제목을 입력하세요");
 
@@ -60,7 +56,7 @@ export default function AdminPage() {
         ad_url: adUrl,
         config,
         game_type: gameType,
-        status: roundStatus // 🔥 상태 변경 반영
+        status: roundStatus
       };
 
       if (correctAnswer) {
@@ -70,7 +66,19 @@ export default function AdminPage() {
       const { error } = await supabase.from('game_rounds').update(updatePayload).eq('id', editingId);
 
       if (!error) {
-        alert("수정되었습니다.");
+        // 🔥 [추가됨] ACTIVE로 되돌릴 때: 해당 라운드 유저 부활 & 투표 기록 삭제
+        if (roundStatus === 'ACTIVE') {
+           // 1. 부활 (이 스테이지에 있는 탈락자들 살리기)
+           await supabase.from('tickets').update({ is_alive: true }).eq('current_stage', editingId);
+
+           // 2. 기록 삭제 (틀린 답 낸 기록 지워줘야 다시 투표 가능)
+           await supabase.from('user_votes').delete().eq('round_id', editingId);
+
+           alert(`수정 완료! (라운드 ${editingId}의 참가자 전원 부활 및 초기화됨)`);
+        } else {
+           alert("수정되었습니다.");
+        }
+
         resetForm();
         fetchRounds();
       } else alert(error.message);
@@ -85,7 +93,7 @@ export default function AdminPage() {
         game_type: gameType,
         config,
         ad_url: adUrl,
-        status: 'ACTIVE' // 생성할 땐 무조건 ACTIVE
+        status: 'ACTIVE'
       });
 
       if (!error) {
@@ -103,7 +111,7 @@ export default function AdminPage() {
     setDesc(round.description);
     setAdUrl(round.ad_url || "");
     setCorrectAnswer(round.correct_answer || "");
-    setRoundStatus(round.status); // 🔥 기존 상태 불러오기
+    setRoundStatus(round.status);
 
     if (round.game_type === 'VOTE') {
       setOptionA(round.config.options ? round.config.options[0] : "");
@@ -143,7 +151,6 @@ export default function AdminPage() {
           <input className="bg-gray-800 p-3 rounded" placeholder="설명" value={desc} onChange={e=>setDesc(e.target.value)} />
           <input className="bg-gray-800 p-3 rounded border border-yellow-600/50" placeholder="🔒 LootLabs 링크 (수정 가능)" value={adUrl} onChange={e=>setAdUrl(e.target.value)} />
 
-          {/* 🔥 수정 모드일 때만 보이는 고급 설정 (정답 & 상태) */}
           {editingId && (
              <div className="grid grid-cols-2 gap-4 bg-gray-800/50 p-4 rounded border border-gray-600">
                <div>
@@ -153,7 +160,7 @@ export default function AdminPage() {
                     onChange={(e) => setRoundStatus(e.target.value)}
                     className="w-full bg-black p-2 rounded text-white font-bold"
                   >
-                    <option value="ACTIVE">🟢 ACTIVE (진행 중)</option>
+                    <option value="ACTIVE">🟢 ACTIVE (진행 중 - 초기화됨)</option>
                     <option value="CLOSED">🔴 CLOSED (종료됨)</option>
                   </select>
                </div>
