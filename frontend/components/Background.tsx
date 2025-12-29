@@ -31,13 +31,10 @@ export default function Background() {
       {/* 오른쪽 아래 */}
       <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-white/20 rounded-br-lg z-10"></div>
 
-      {/* 5. 상단 상금 표시 */}
-      <div className="absolute top-12 left-0 right-0 flex flex-col items-center z-10">
-
         {/* LIVE 배지 */}
         <div className="flex items-center gap-2 mb-3 bg-red-950/30 px-3 py-1 rounded border border-red-600/30 backdrop-blur-sm">
             <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse shadow-[0_0_10px_red]"></div>
-            <span className="text-red-500 text-xs font-bold tracking-widest font-mono">LIVE FEED</span>
+            <span className="text-red-500 text-xs font-bold tracking-widest font-mono">ON AIR</span>
         </div>
 
         <p className="text-gray-600 text-[10px] md:text-xs tracking-[0.3em] mb-1 uppercase font-mono">
