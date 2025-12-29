@@ -307,7 +307,7 @@ function GameContent() {
       {status === "INTRO" && (
         <div className="z-10 flex flex-col items-center w-full max-w-md">
            <div className="bg-black/50 backdrop-blur border border-white/30 text-white px-8 py-2 rounded-full font-bold text-lg mb-8 shadow-lg">
-             {isRegistered ? `@${displayId}` : "GUEST"}
+             {isRegistered ? `ID: ${displayId}` : "GUEST"}
            </div>
            {!isRegistered ? (
              <RegisterView instagramId={instagramId} setInstagramId={setInstagramId} password={password} setPassword={setPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} handleRegister={handleRegister} setStatus={setStatus} />
