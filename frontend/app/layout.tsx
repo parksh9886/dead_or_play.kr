@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 
 import { Toaster } from 'sonner';
@@ -36,6 +35,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // 🔥 [수정] 본인 인스타그램 주소로 변경하세요!
+  const INSTA_URL = "https://www.instagram.com/YOUR_INSTAGRAM_ID";
+
   return (
     <html lang="ko">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white`}>
@@ -55,6 +57,42 @@ export default function RootLayout({
           duration={2000}
           style={{ marginTop: '20px', fontWeight: 'bold', border: '1px solid #333' }}
         />
+
+        {/* ✅ [추가됨] 인스타그램 고정 배지 버튼 */}
+        <a
+          href={INSTA_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-3 px-5 py-3 bg-black/80 backdrop-blur-md border border-white/30 rounded-full text-white hover:bg-white hover:text-black hover:border-white transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.1)] group active:scale-95"
+        >
+          {/* 인스타 아이콘 (SVG) */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="group-hover:stroke-black transition-colors"
+          >
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+          </svg>
+
+          {/* 텍스트 */}
+          <div className="flex flex-col items-start leading-none">
+            <span className="text-[8px] text-gray-400 group-hover:text-gray-600 font-bold uppercase tracking-widest mb-[2px]">
+              Game Master
+            </span>
+            <span className="text-xs font-black tracking-wider">
+              OFFICIAL
+            </span>
+          </div>
+        </a>
 
         <Analytics />
       </body>
