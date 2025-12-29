@@ -1,34 +1,46 @@
 "use client";
 
+import { motion } from "framer-motion";
+
 export default function VoteGame({ config, handleAction, myVote }: any) {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="flex flex-col gap-3 w-full">
       {config.options.map((option: string, idx: number) => {
         const isSelected = myVote === option;
         const isDisabled = !!myVote; // 투표했으면 버튼 잠금
 
         return (
-          <button
+          <motion.button
             key={idx}
+            whileTap={!isDisabled ? { scale: 0.98 } : {}}
             onClick={() => !isDisabled && handleAction(option)}
             disabled={isDisabled}
             className={`
-              relative p-6 rounded-2xl border-2 transition-all flex flex-col items-center justify-center min-h-[150px]
+              relative w-full p-5 rounded-xl border transition-all flex items-center justify-between group
+              ${isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-white'}
               ${isSelected
-                ? "bg-green-900/30 border-green-500 text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.3)] scale-105 z-10"
-                : isDisabled
-                  ? "bg-gray-900 border-gray-800 text-gray-600 opacity-50 cursor-not-allowed"
-                  : "bg-gray-800 border-gray-700 hover:border-pink-500 hover:bg-gray-700 text-white"
+                ? "bg-white border-white" // 선택됨: 화이트 배경
+                : "bg-transparent border-white/20" // 기본: 투명 + 얇은 테두리
               }
             `}
           >
+            <div className={`flex items-center gap-4 ${isSelected ? "text-black" : "text-white"}`}>
+              {/* 왼쪽: A, B, C... 인덱스 */}
+              <span className={`text-xl font-black ${isSelected ? "text-black" : "text-gray-600 group-hover:text-gray-400"}`}>
+                {String.fromCharCode(65 + idx)}
+              </span>
+
+              {/* 가운데: 선택지 텍스트 */}
+              <span className="text-lg font-bold break-keep text-left">
+                {option}
+              </span>
+            </div>
+
+            {/* 오른쪽: 체크 아이콘 (선택 시만 보임) */}
             {isSelected && (
-              <div className="absolute -top-3 bg-green-500 text-black text-[10px] font-bold px-2 py-1 rounded-full animate-bounce">
-                내가 선택함
-              </div>
+              <span className="text-black font-black text-xl">✓</span>
             )}
-            <span className="text-2xl font-black break-keep">{option}</span>
-          </button>
+          </motion.button>
         );
       })}
     </div>

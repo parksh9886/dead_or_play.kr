@@ -1,121 +1,166 @@
 "use client";
 
+import { useState } from "react"; // ✅ useState 필수
 import GameRenderer from "./GameRenderer";
 
-// 1. 탈락 화면
+// 1. 탈락 화면 (다잉 메시지 기능)
 export function DeathView({ userState, roundData, eliminatedCount, handleShare }: any) {
-  const isWinner = userState?.isAlive && !roundData;
+  const [isWriting, setIsWriting] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const onFinalShare = () => {
+    handleShare(message);
+  };
+
   return (
-    <div className="text-center p-6 bg-red-950/30 rounded-3xl border-2 border-red-600 backdrop-blur-md animate-pulse">
-      <h2 className="text-5xl md:text-6xl font-black text-red-600 mb-4 tracking-tighter">YOU DIED</h2>
-      <p className="text-xl text-white mb-2">당신은 {eliminatedCount}번째 탈락자입니다.</p>
-      <p className="text-gray-400 mb-8">({userState?.stage}라운드 사망)</p>
-      <button onClick={handleShare} className="bg-white text-red-900 font-bold px-8 py-4 rounded-full hover:scale-105 transition-transform">
-        🩸 유언장 남기기 (공유)
-      </button>
+    <div className="text-center p-8 bg-neutral-900/90 rounded-3xl border border-red-900/50 backdrop-blur-md w-full max-w-md mx-auto">
+
+      {/* 깔끔한 타이틀 */}
+      <h2 className="text-6xl font-black text-red-600 mb-4 tracking-tighter">YOU DIED</h2>
+      <p className="text-xl text-white font-bold mb-2">{userState?.stage}라운드에서 사망했습니다.</p>
+      <p className="text-gray-500 mb-8 text-sm">
+        당신은 이 게임의 {eliminatedCount}번째 희생자 입니다.
+      </p>
+
+      {/* 입력창이 닫혀있을 때 */}
+      {!isWriting ? (
+        <button
+          onClick={() => setIsWriting(true)}
+          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-4 rounded-xl transition-all shadow-lg shadow-red-900/30"
+        >
+          유언을 남기고 초대장을 보내세요.
+        </button>
+      ) : (
+        /* 입력창이 열렸을 때 */
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="유언을 입력하세요... (예: 너도 들어와서 죽어봐, n라운드 정답 ***다, 1등해서 엔빵 ㄱ)"
+                className="w-full h-24 bg-black border border-white/20 text-white p-4 rounded-xl focus:outline-none focus:border-white resize-none placeholder:text-gray-600"
+                maxLength={50}
+            />
+
+            <button
+                onClick={onFinalShare}
+                className="w-full bg-white hover:bg-gray-200 text-black font-black px-6 py-4 rounded-xl transition-all shadow-lg"
+            >
+                초대장 전송
+            </button>
+
+            <button
+                onClick={() => setIsWriting(false)}
+                className="text-gray-500 text-xs underline underline-offset-4"
+            >
+                취소
+            </button>
+        </div>
+      )}
     </div>
   );
 }
 
-// 2. 생존자 게임 화면 (myVote 추가됨)
+// 2. 생존자 게임 화면 (메인)
 export function SurvivorView({ userState, roundData, handleGameAction, isRoundUnlocked, onUnlock, myVote, onCheckResult, isProcessing }: any) {
 
   const isLocked = roundData.status === 'CLOSED' && !isRoundUnlocked && !myVote;
   const showResultButton = roundData.status === 'CLOSED' && myVote;
 
   return (
-    <div className="relative bg-black/70 p-6 md:p-8 rounded-3xl border-4 border-pink-600/50 shadow-[0_0_40px_rgba(236,72,153,0.4)] backdrop-blur-md w-full">
+    <div className="relative bg-neutral-900/80 p-6 md:p-8 rounded-3xl border border-white/10 shadow-2xl backdrop-blur-md w-full max-w-lg mx-auto">
 
       {/* 🔒 잠금 오버레이 */}
       {isLocked && (
-        <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center rounded-3xl p-6 text-center animate-in fade-in">
-          <div className="text-6xl mb-4">🔒</div>
-          <h3 className="text-2xl font-bold text-red-500 mb-2">기록 보관소 잠금</h3>
-          <p className="text-gray-300 mb-8 text-sm leading-relaxed">
+        <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center rounded-3xl p-6 text-center animate-in fade-in">
+          <div className="text-5xl mb-4">🔒</div>
+          <h3 className="text-2xl font-bold text-white mb-2">라운드 종료</h3>
+          <p className="text-gray-400 mb-8 text-sm leading-relaxed">
             이미 종료된 라운드입니다.<br/>
-            생존 결과를 확인하고 진행하려면<br/>
-            <span className="text-white font-bold">보안 미션</span>을 통과해야 합니다.
+            결과를 확인하려면 미션을 수행하세요.
           </p>
           <button
             onClick={onUnlock}
-            className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white font-bold py-4 px-8 rounded-xl shadow-[0_0_20px_rgba(220,38,38,0.5)] transition-all active:scale-95"
+            className="w-full bg-gradient-to-r from-red-600 to-pink-600 text-white font-bold py-4 px-8 rounded-xl hover:opacity-90 transition-all"
           >
-            📺 미션 수행하고 잠금 해제
+            잠금 해제 (광고 시청)
           </button>
-          <p className="text-xs text-gray-600 mt-4">페널티 수행 후 게임이 재개됩니다.</p>
         </div>
       )}
 
-      {/* 🔥 [추가됨] 처리 중일 때 화면 전체 흐리게 처리 (클릭 방지) */}
+      {/* 메인 게임 UI */}
       <div className={`transition-all ${isLocked || isProcessing ? 'blur-sm opacity-50 pointer-events-none' : ''}`}>
         <div className="text-center mb-8">
-          <div className="inline-block bg-pink-600 px-4 py-1 rounded-full text-xs font-bold mb-4 shadow-lg">
-            STAGE {userState?.stage}
+          <div className="inline-block bg-white text-black px-4 py-1 rounded-full text-xs font-black mb-4 uppercase tracking-wider">
+            Round {userState?.stage}
           </div>
-          <h2 className="text-2xl md:text-4xl font-black mb-2 text-white break-keep">
+          <h2 className="text-2xl md:text-3xl font-bold mb-3 text-white break-keep leading-tight">
             {roundData.title}
           </h2>
-          <p className="text-gray-300 text-xs md:text-sm break-keep">{roundData.description}</p>
+          <p className="text-gray-400 text-sm break-keep">{roundData.description}</p>
         </div>
 
         <GameRenderer roundData={roundData} handleGameAction={isLocked ? () => {} : handleGameAction} myVote={myVote} />
 
         {showResultButton && (
           <div className="mt-8 animate-in slide-in-from-bottom-4 fade-in duration-500">
-             <div className="bg-green-900/40 border border-green-500/50 rounded-xl p-4 text-center">
-                <p className="text-green-400 font-bold mb-1">📢 라운드가 종료되었습니다!</p>
-                <p className="text-xs text-gray-400 mb-4">정답이 확정되었습니다. 생존 여부를 확인하세요.</p>
+             <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-6 text-center">
+                <p className="text-green-400 font-bold mb-1">투표 완료</p>
+                <p className="text-xs text-gray-500 mb-4">결과가 집계되었습니다.</p>
 
                 <button
                   onClick={onCheckResult}
-                  disabled={isProcessing} // 버튼 잠금
-                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-black py-4 rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.4)] transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                  disabled={isProcessing}
+                  className="w-full bg-white hover:bg-gray-200 text-black font-black py-4 rounded-xl transition-all active:scale-95 disabled:opacity-50"
                 >
-                  {isProcessing ? "처리 중..." : "💀 생존 여부 확인 (다음 라운드)"}
+                  {isProcessing ? "로딩 중..." : "결과 확인하기"}
                 </button>
              </div>
           </div>
         )}
 
-        <div className="mt-8 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+        <div className="mt-8 text-center text-xs text-gray-500 flex items-center justify-center gap-2 font-mono">
           <span className={`w-2 h-2 rounded-full ${roundData.status === 'ACTIVE' ? 'bg-green-500 animate-ping' : 'bg-red-500'}`}></span>
-          {roundData.status === 'ACTIVE' ? "LIVE: 진행 중" : "CLOSED: 집계 완료"}
+          {roundData.status === 'ACTIVE' ? "LIVE" : "CLOSED"}
         </div>
       </div>
     </div>
   );
 }
 
-// 3. 메인 로비 (로그인 버튼 추가됨)
+// 3. 메인 로비 (대문)
 export function MainLobbyView({ enterGame, setStatus }: any) {
   return (
-    <div className="flex flex-col items-center text-center z-10 animate-fade-in max-w-md w-full">
-      <h1 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-pink-500 to-purple-900 mb-2 drop-shadow-[0_0_15px_rgba(236,72,153,0.8)] tracking-tighter">
-        DEAD<br/><span className="text-white text-4xl md:text-6xl">OR</span><br/>PLAY
-      </h1>
-      <p className="text-gray-300 mb-12 text-lg font-light tracking-widest">운명을 건 서바이벌</p>
+    <div className="flex flex-col items-center text-center z-10 animate-fade-in max-w-md w-full px-6">
 
-      {/* 신규 참가 버튼 */}
+      {/* 타이틀: 정적 글리치 효과 (흰색) */}
+      <div className="mb-16 mt-8">
+        <h1 className="text-7xl md:text-8xl font-black tracking-tighter mb-4 select-none">
+          <span className="static-glitch block">DEAL</span>
+          <span className="static-glitch-red text-5xl md:text-6xl block my-[-10px]">OR</span>
+          <span className="static-glitch block">DIE</span>
+        </h1>
+        <p className="text-gray-500 mt-4 text-sm font-medium tracking-[0.4em] uppercase">
+          Survival Game
+        </p>
+      </div>
+
       <button
         onClick={enterGame}
-        className="group relative w-full max-w-xs px-12 py-5 bg-pink-600 hover:bg-pink-700 text-white font-black text-2xl rounded-full transition-all hover:scale-105 shadow-[0_0_30px_rgba(236,72,153,0.6)] overflow-hidden mb-4"
+        className="group relative w-full max-w-xs py-5 bg-white text-black font-black text-2xl rounded-2xl transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.1)] mb-4"
       >
-        <span className="relative z-10">참가하기 (가입)</span>
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        참가하기
       </button>
 
-      {/* 👇 [추가됨] 기존 유저 로그인 버튼 */}
       <button
         onClick={() => setStatus("LOGIN")}
-        className="text-gray-500 hover:text-white text-sm underline decoration-gray-500 underline-offset-4 transition-colors p-2"
+        className="text-gray-500 hover:text-white text-sm underline decoration-gray-600 underline-offset-4 transition-colors p-2"
       >
-        이미 계정이 있으신가요? 로그인
+        이미 계정이 있나요? 로그인
       </button>
 
-      <div className="mt-12 grid grid-cols-3 gap-4 text-xs text-gray-500 w-full border-t border-gray-800 pt-8">
-        <div>💰 총 상금<br/><span className="text-white font-bold text-sm">?? 억원</span></div>
-        <div>💀 탈락자<br/><span className="text-red-500 font-bold text-sm">집계 중</span></div>
-        <div>⏳ 다음 라운드<br/><span className="text-green-400 font-bold text-sm">대기 중</span></div>
+      <div className="mt-20 flex gap-8 text-xs text-gray-600 font-mono border-t border-gray-900 pt-8">
+        <div>TOTAL PRIZE<br/><span className="text-white font-bold">UNKNOWN</span></div>
+        <div>PLAYERS<br/><span className="text-red-500 font-bold">LIVE</span></div>
       </div>
     </div>
   );
@@ -123,18 +168,18 @@ export function MainLobbyView({ enterGame, setStatus }: any) {
 
 // 4. 대기 화면
 export function WaitingView() {
-  const ADMIN_INSTA_URL = "https://www.instagram.com/YOUR_INSTAGRAM_ID"; // 🔥 본인 ID로 변경
+  const ADMIN_INSTA_URL = "https://www.instagram.com/YOUR_INSTAGRAM_ID"; // 본인 ID로 변경
   return (
-    <div className="z-10 flex flex-col items-center text-center p-8 bg-black/70 rounded-3xl border-2 border-green-500/50 backdrop-blur-md max-w-md w-full animate-fade-in shadow-[0_0_30px_rgba(34,197,94,0.3)]">
-      <h2 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 mb-4 tracking-tighter">MISSION COMPLETE</h2>
-      <p className="text-white text-xl md:text-2xl font-bold mb-2">현재까지 모든 라운드 생존.</p>
-      <div className="w-16 h-1 bg-green-500 rounded-full my-6 mx-auto"></div>
-      <p className="text-gray-300 text-sm md:text-base mb-8 leading-relaxed">
-        다음 라운드는 아직 공개되지 않았습니다.<br/>
-        <span className="text-pink-500 font-bold">공식 인스타그램</span>을 팔로우하고<br/>가장 먼저 생존 알림을 받으세요.
+    <div className="z-10 flex flex-col items-center text-center p-8 bg-neutral-900/90 rounded-3xl border border-white/10 backdrop-blur-md max-w-md w-full animate-fade-in">
+      <div className="text-green-500 text-6xl mb-4">✓</div>
+      <h2 className="text-3xl font-bold text-white mb-2">생존 확인</h2>
+      <div className="w-12 h-1 bg-green-500 rounded-full my-6 mx-auto"></div>
+      <p className="text-gray-400 text-sm mb-8 leading-relaxed">
+        축하합니다.<br/>
+        다음 라운드가 시작될 때까지 대기하세요.
       </p>
-      <a href={ADMIN_INSTA_URL} target="_blank" rel="noopener noreferrer" className="w-full py-5 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black text-xl rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg animate-pulse">
-        📸 인스타 팔로우하고 대기하기
+      <a href={ADMIN_INSTA_URL} target="_blank" rel="noopener noreferrer" className="w-full py-4 bg-white text-black font-bold text-lg rounded-xl hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
+        인스타그램에서 알림 받기
       </a>
     </div>
   );

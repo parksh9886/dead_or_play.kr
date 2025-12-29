@@ -266,23 +266,47 @@ function GameContent() {
     finally { setIsProcessing(false); }
   };
 
-  const handleShare = async () => {
-    const link = "https://deadorplay.site";
-    const text = `💀 [DEAD OR PLAY]\n${eliminatedCount}번째 탈락자 발생.\n(${userState?.stage}라운드 사망)`;
-    if (navigator.share) navigator.share({ title: "DEAD OR PLAY", text, url: link });
-    else { navigator.clipboard.writeText(`${text}\n${link}`); toast.success("링크 복사됨"); }
+  // --- [수정됨] 스마트 공유하기 (유언 메시지 포함) ---
+  const handleShare = async (customMessage?: string) => {
+    const link = "https://dead-or-play-kr.vercel.app/";
+    const title = "DEAD OR PLAY";
+
+    // 기본 메시지
+    let text = `💀 [DEAD OR PLAY]\n\n저는 ${eliminatedCount}번째 희생자입니다.\n(${userState?.stage}라운드 사망)\n\n`;
+
+    // 유저가 쓴 유언이 있으면 추가
+    if (customMessage) {
+        text += `❝ ${customMessage} ❞\n\n`;
+    }
+
+    text += `당신의 운명을 테스트해보세요.`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: title,
+          text: text,
+          url: link,
+        });
+      } catch (err) { console.log("공유 취소"); }
+    } else {
+      const copyText = `${text}\n${link}`;
+      navigator.clipboard.writeText(copyText).then(() => {
+        alert("🩸 유언장이 복사되었습니다!\n친구에게 붙여넣기(Ctrl+V) 하세요.");
+      });
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden pt-20 md:pt-32">
       <Background />
-      {status === "LOADING" && <div className="text-pink-600 font-bold text-2xl animate-pulse z-10">LOADING...</div>}
+      {status === "LOADING" && <div className="text-red-600 font-bold text-2xl animate-pulse z-10">LOADING...</div>}
       {status === "LOCKED" && <LockedView displayId={displayId} unlockPw={unlockPw} setUnlockPw={setUnlockPw} handleUnlock={handleUnlock} />}
       {status === "LOGIN" && <LoginView loginId={loginId} setLoginId={setLoginId} loginPw={loginPw} setLoginPw={setLoginPw} handleLogin={handleLogin} setStatus={setStatus} />}
       {status === "IDLE" && <MainLobbyView enterGame={enterGameDirectly} setStatus={setStatus} />}
       {status === "INTRO" && (
         <div className="z-10 flex flex-col items-center w-full max-w-md">
-           <div className="bg-white/90 backdrop-blur text-black px-6 py-2 rounded-full font-black text-xl mb-8 shadow-[0_0_15px_rgba(255,255,255,0.5)]">
+           <div className="bg-black/50 backdrop-blur border border-white/30 text-white px-8 py-2 rounded-full font-bold text-lg mb-8 shadow-lg">
              {isRegistered ? `@${displayId}` : "GUEST"}
            </div>
            {!isRegistered ? (
