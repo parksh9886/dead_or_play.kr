@@ -61,7 +61,7 @@ function GameContent() {
     if (sessionStorage.getItem("pending_mission") === "true") {
        sessionStorage.removeItem("pending_mission");
        setIsRoundUnlocked(true);
-       toast.success("잠금이 해제되었습니다!", { description: "이제 생존 투표를 진행하세요." });
+       toast.success("잠금이 해제되었습니다!", { description: "이제 게임을 진행하세요." });
        targetTicket = sessionStorage.getItem("my_ticket");
     }
 
@@ -86,7 +86,7 @@ function GameContent() {
   const startLootLabsMission = () => {
     if (!roundData?.ad_url) {
         setIsRoundUnlocked(true);
-        toast.success("무료로 잠금이 해제되었습니다.");
+        toast.success("잠금이 해제되었습니다.");
         return;
     }
     toast.info("보안 미션 페이지로 이동합니다.", { description: "미션 완료 후 자동으로 돌아옵니다." });
@@ -129,7 +129,7 @@ function GameContent() {
               setMyVote(null);
               fetchGameData(nonce);
             } else {
-              toast.error("❌ 탈락했습니다.", { description: "당신의 운명은 여기까지입니다." });
+              toast.error("❌ 사망했습니다.", { description: "당신의 운명은 여기까지입니다." });
               await supabase.from('tickets').update({ is_alive: false }).eq('nonce', nonce);
               fetchGameData(nonce);
             }
@@ -158,7 +158,7 @@ function GameContent() {
              setMyVote(null);
              fetchGameData(nonce);
         } else {
-             toast.error("💀 탈락했습니다.", { description: "아쉽지만 여기까지입니다." });
+             toast.error("💀 사망했습니다.", { description: "아쉽지만 여기까지입니다." });
              await supabase.from('tickets').update({ is_alive: false }).eq('nonce', nonce);
              fetchGameData(nonce);
         }
@@ -272,14 +272,14 @@ function GameContent() {
     const title = "DEAD OR PLAY";
 
     // 기본 메시지
-    let text = `💀 [DEAD OR PLAY]\n\n저는 ${eliminatedCount}번째 희생자입니다.\n(${userState?.stage}라운드 사망)\n\n`;
+    let text = `💀 [Deal or Die]\n\n저는 ${eliminatedCount}번째 희생자입니다.\n(${userState?.stage}라운드 사망)\n\n`;
 
     // 유저가 쓴 유언이 있으면 추가
     if (customMessage) {
         text += `❝ ${customMessage} ❞\n\n`;
     }
 
-    text += `당신의 운명을 테스트해보세요.`;
+    text += `당신의 운명을 테스트하고 상금을 받아가세요.`;
 
     if (navigator.share) {
       try {

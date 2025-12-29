@@ -1,18 +1,33 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-export default function QuizGame({ config, handleAction, myVote }: any) {
+interface QuizGameProps {
+  config: { placeholder?: string };
+  onSelect: (value: string) => void; // 부모에게 알림
+  selectedAnswer: string | null;     // 현재 DEAL 대기 중인 값
+  myVote?: string | null;            // 이미 확정된 내 답
+}
+
+export default function QuizGame({ config, onSelect, selectedAnswer, myVote }: QuizGameProps) {
   const [answer, setAnswer] = useState("");
 
-  const handleSubmit = () => {
+  // 이미 제출했거나(myVote), DEAL 대기 중(selectedAnswer)이면 입력창에 그 값을 고정
+  useEffect(() => {
+    if (myVote) setAnswer(myVote);
+    else if (selectedAnswer) setAnswer(selectedAnswer);
+  }, [myVote, selectedAnswer]);
+
+  const handlePreSubmit = () => {
     if (!answer.trim()) return;
-    handleAction(answer.trim());
+    onSelect(answer.trim()); // DEAL 패널 띄우기 요청
   };
+
+  const isLocked = !!myVote || !!selectedAnswer; // 제출했거나 DEAL 대기 중이면 잠금
 
   return (
     <div className="flex flex-col gap-6 w-full">
 
-      {/* 미션 배지 (선택 사항) */}
+      {/* 미션 배지 */}
       <div className="flex justify-center">
         <span className="bg-red-600/10 text-red-500 text-[10px] border border-red-600/50 px-2 py-1 rounded font-bold tracking-widest uppercase">
           QUIZ MISSION
@@ -22,20 +37,22 @@ export default function QuizGame({ config, handleAction, myVote }: any) {
       <div className="relative">
         <input
           type="text"
-          value={myVote || answer}
-          onChange={(e) => !myVote && setAnswer(e.target.value)}
-          disabled={!!myVote}
+          value={answer}
+          onChange={(e) => !isLocked && setAnswer(e.target.value)}
+          disabled={isLocked}
           className={`
             w-full p-5 text-center text-xl font-bold rounded-xl outline-none border transition-all placeholder:text-gray-800
             ${myVote
-              ? "bg-white text-black border-white" // 제출 완료 시: 화이트 배경
-              : "bg-black text-white border-white/20 focus:border-white" // 입력 중: 블랙 배경
+              ? "bg-white text-black border-white" // 확정됨
+              : selectedAnswer
+                ? "bg-gray-800 text-white border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]" // DEAL 대기 중 (강조)
+                : "bg-black text-white border-white/20 focus:border-white" // 입력 중
             }
           `}
           placeholder={config.placeholder || "정답을 입력하세요"}
         />
 
-        {/* 제출 완료 메시지 */}
+        {/* 상태 메시지 */}
         {myVote && (
            <div className="text-center text-xs text-gray-500 mt-3 font-bold flex items-center justify-center gap-1">
              <span>🔒</span> 답안이 암호화되어 전송되었습니다.
@@ -43,14 +60,21 @@ export default function QuizGame({ config, handleAction, myVote }: any) {
         )}
       </div>
 
-      {/* 제출 버튼 (아직 제출 안 했을 때만 보임) */}
-      {!myVote && (
+      {/* 입력 완료 버튼 (DEAL 대기 중이 아니고, 제출도 안 했을 때만 보임) */}
+      {!isLocked && (
         <button
-          onClick={handleSubmit}
+          onClick={handlePreSubmit}
           className="w-full bg-white text-black font-black py-4 rounded-xl text-lg hover:bg-gray-200 transition-all active:scale-95 shadow-lg"
         >
-          정답 제출하기
+          입력 완료 (확인)
         </button>
+      )}
+
+      {/* DEAL 대기 중일 때 안내 */}
+      {!myVote && selectedAnswer && (
+        <p className="text-center text-xs text-red-500 animate-pulse font-bold">
+          하단의 [ MAKE A DEAL ] 버튼을 눌러 확정하세요.
+        </p>
       )}
     </div>
   );
