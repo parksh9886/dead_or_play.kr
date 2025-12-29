@@ -67,13 +67,22 @@ export default function RootLayout({
             marginTop: '10px',    // 모바일 상단 여백 확보
             fontWeight: 'bold'
           }}
-          richColors={true}  // <-- 요청하신 대로 뺐습니다!
+          // richColors={true}  <-- (요청하신 대로 뺀 상태 유지)
         />
 
         {/* 4. 방문자 통계 (Vercel Analytics) */}
         <Analytics />
 
-        {/* 5. AdMaven 광고 스크립트들 (그대로 유지) */}
+        {/* 5. AdMaven 광고 스크립트들 */}
+
+        {/* (중요) 서비스 워커 파일 연결 - 아까 다운받은 sw.js가 public 폴더에 있어야 작동합니다 */}
+        <Script
+          id="admaven-sw"
+          src="/sw.js"
+          strategy="afterInteractive"
+          data-cfasync="false"
+        />
+
         {/* AdMaven Pop (팝언더/인페이지 푸시) - ID: 1233768 */}
         <Script
           id="admaven-pop"
@@ -89,6 +98,15 @@ export default function RootLayout({
           strategy="afterInteractive"
           data-cfasync="false"
         />
+
+        {/* 🔥 [추가됨] AdMaven 추가 광고 (요청하신 스크립트) - ID: 1234224 */}
+        <Script
+          id="admaven-additional"
+          src="//dcbbwymp1bhlf.cloudfront.net/?wbbcd=1234224"
+          strategy="afterInteractive"
+          data-cfasync="false"
+        />
+
       </body>
     </html>
   );
