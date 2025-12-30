@@ -32,7 +32,7 @@ export default function GameRenderer({ roundData, handleGameAction, myVote }: Ga
     }
   };
 
-  // ✅ [추가됨] 제출 완료(myVote) 시 보여줄 '대기 전광판'
+  // ✅ 제출 완료(myVote) 시 보여줄 '대기 전광판'
   if (myVote) {
     return (
       <div className="w-full flex flex-col items-center justify-center py-8 px-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -112,8 +112,9 @@ export default function GameRenderer({ roundData, handleGameAction, myVote }: Ga
           >
             <div className="bg-neutral-900/95 border-2 border-white/20 p-5 rounded-2xl shadow-2xl backdrop-blur-xl flex flex-col items-center text-center">
 
+              {/* ✅ [수정됨] 문구 통일 */}
               <p className="text-gray-400 text-xs mb-3 font-medium uppercase tracking-widest animate-pulse">
-                {roundData.game_type === 'QUIZ' ? "이 정답을 전송하시겠습니까?" : "이 선택에 운명을 걸겠습니까?"}
+                정말 죽을수도 있습니다. 이 선택에 운명을 걸겠습니까?
               </p>
 
               <div className="flex w-full gap-3">

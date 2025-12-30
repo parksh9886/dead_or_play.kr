@@ -28,6 +28,9 @@ function GameContent() {
   // 처리 중 상태 (광클 방지용)
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // 🔥 [NEW] 데이터 로딩 완료 여부 (깜빡임 방지용)
+  const [isDataReady, setIsDataReady] = useState(false);
+
   const [instagramId, setInstagramId] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -35,7 +38,7 @@ function GameContent() {
   const [loginPw, setLoginPw] = useState("");
   const [unlockPw, setUnlockPw] = useState("");
 
-  // 🔥 [추가됨] 접속하자마자 전체 사망자 수 카운트 (메인 로비용)
+  // 접속하자마자 전체 사망자 수 카운트 (메인 로비용)
   useEffect(() => {
     const fetchGlobalStats = async () => {
       const { count } = await supabase
@@ -49,6 +52,7 @@ function GameContent() {
   }, []);
 
   const fetchGameData = async (nonce: string) => {
+    setIsDataReady(false); // 🔥 로딩 시작 (화면 숨김)
     try {
       const { data: user } = await supabase.from('tickets').select('current_stage, is_alive').eq('nonce', nonce).single();
       if (user) {
@@ -67,6 +71,7 @@ function GameContent() {
         }
       }
     } catch (err) { console.error(err); }
+    finally { setIsDataReady(true); } // 🔥 로딩 끝 (화면 보여줌)
   };
 
   useEffect(() => {
@@ -312,7 +317,6 @@ function GameContent() {
       {status === "LOCKED" && <LockedView displayId={displayId} unlockPw={unlockPw} setUnlockPw={setUnlockPw} handleUnlock={handleUnlock} />}
       {status === "LOGIN" && <LoginView loginId={loginId} setLoginId={setLoginId} loginPw={loginPw} setLoginPw={setLoginPw} handleLogin={handleLogin} setStatus={setStatus} />}
 
-      {/* 🔥 [수정됨] MainLobbyView에 eliminatedCount 전달 */}
       {status === "IDLE" && <MainLobbyView enterGame={enterGameDirectly} setStatus={setStatus} eliminatedCount={eliminatedCount} />}
 
       {status === "INTRO" && (
@@ -324,7 +328,10 @@ function GameContent() {
              <RegisterView instagramId={instagramId} setInstagramId={setInstagramId} password={password} setPassword={setPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} handleRegister={handleRegister} setStatus={setStatus} />
            ) : (
              <div className="w-full">
-               {userState && !userState.isAlive ? (
+               {/* 🔥 [수정됨] isDataReady가 false일 땐 화면을 숨기거나 로딩만 표시 */}
+               {!isDataReady ? (
+                  <div className="text-gray-500 text-xs animate-pulse tracking-widest mt-10">LOADING DATA...</div>
+               ) : userState && !userState.isAlive ? (
                  <DeathView userState={userState} roundData={roundData} eliminatedCount={eliminatedCount} handleShare={handleShare} />
                ) : roundData ? (
                  <SurvivorView

@@ -181,7 +181,7 @@ export function WaitingView() {
       <h2 className="text-3xl font-bold text-white mb-2">생존 확인</h2>
       <div className="w-12 h-1 bg-green-500 rounded-full my-6 mx-auto"></div>
       <p className="text-gray-400 text-sm mb-8 leading-relaxed">
-        축하합니다.<br/>
+        생존했습니다.<br/>
         다음 라운드가 공개될 때까지 대기하세요.
       </p>
       <a href={ADMIN_INSTA_URL} target="_blank" rel="noopener noreferrer" className="w-full py-4 bg-white text-black font-bold text-lg rounded-xl hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
