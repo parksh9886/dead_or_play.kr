@@ -25,7 +25,7 @@ function GameContent() {
   const [myVote, setMyVote] = useState<string | null>(null);
   const [isRoundUnlocked, setIsRoundUnlocked] = useState(false);
 
-  // 🔥 [추가됨] 처리 중 상태 (광클 방지용)
+  // 처리 중 상태 (광클 방지용)
   const [isProcessing, setIsProcessing] = useState(false);
 
   const [instagramId, setInstagramId] = useState("");
@@ -34,6 +34,19 @@ function GameContent() {
   const [loginId, setLoginId] = useState("");
   const [loginPw, setLoginPw] = useState("");
   const [unlockPw, setUnlockPw] = useState("");
+
+  // 🔥 [추가됨] 접속하자마자 전체 사망자 수 카운트 (메인 로비용)
+  useEffect(() => {
+    const fetchGlobalStats = async () => {
+      const { count } = await supabase
+        .from('tickets')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_alive', false);
+
+      if (count !== null) setEliminatedCount(count);
+    };
+    fetchGlobalStats();
+  }, []);
 
   const fetchGameData = async (nonce: string) => {
     try {
@@ -44,6 +57,7 @@ function GameContent() {
         const { data: round } = await supabase.from('game_rounds').select('*').eq('id', user.current_stage).single();
         setRoundData(round);
 
+        // 로그인 후에도 최신 사망자 수 갱신
         const { count } = await supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('is_alive', false);
         setEliminatedCount(count || 0);
 
@@ -98,7 +112,6 @@ function GameContent() {
     const nonce = sessionStorage.getItem("my_ticket");
     if (!nonce || !roundData || !userState) return;
 
-    // 🔥 [추가됨] 처리 중이거나 이미 투표했으면 클릭 무시
     if (isProcessing) return;
     if (myVote) return toast.warning("이미 투표를 완료했습니다.");
 
@@ -107,7 +120,6 @@ function GameContent() {
       return;
     }
 
-    // 처리 시작 (버튼 잠금)
     setIsProcessing(true);
 
     try {
@@ -139,7 +151,6 @@ function GameContent() {
         console.error(e);
         toast.error("처리 중 오류가 발생했습니다.");
     } finally {
-        // 처리 끝 (버튼 해제) -> 약간의 딜레이를 주어 연타 방지
         setTimeout(() => setIsProcessing(false), 500);
     }
   };
@@ -147,7 +158,7 @@ function GameContent() {
   const handleCheckResult = async () => {
     const nonce = sessionStorage.getItem("my_ticket");
     if (!nonce || !myVote || !roundData || !userState) return;
-    if (isProcessing) return; // 🔥 중복 클릭 방지
+    if (isProcessing) return;
 
     setIsProcessing(true);
     try {
@@ -170,7 +181,7 @@ function GameContent() {
   const enterGameDirectly = () => { setStatus("INTRO"); };
 
   const handleRegister = async () => {
-    if (isProcessing) return; // 🔥 중복 가입 방지
+    if (isProcessing) return;
 
     const cleanId = instagramId.trim().toLowerCase();
     const cleanPw = password.trim().toLowerCase();
@@ -226,7 +237,7 @@ function GameContent() {
   };
 
   const handleLogin = async () => {
-    if (isProcessing) return; // 🔥 중복 로그인 방지
+    if (isProcessing) return;
     setIsProcessing(true);
 
     const cleanId = loginId.trim().toLowerCase();
@@ -266,15 +277,12 @@ function GameContent() {
     finally { setIsProcessing(false); }
   };
 
-  // --- [수정됨] 스마트 공유하기 (유언 메시지 포함) ---
   const handleShare = async (customMessage?: string) => {
     const link = "https://dead-or-play-kr.vercel.app/";
     const title = "DEAD OR PLAY";
 
-    // 기본 메시지
     let text = `💀 [Deal or Die]\n\n저는 ${eliminatedCount}번째 희생자입니다.\n(${userState?.stage}라운드 사망)\n\n`;
 
-    // 유저가 쓴 유언이 있으면 추가
     if (customMessage) {
         text += `❝ ${customMessage} ❞\n\n`;
     }
@@ -303,7 +311,10 @@ function GameContent() {
       {status === "LOADING" && <div className="text-red-600 font-bold text-2xl animate-pulse z-10">LOADING...</div>}
       {status === "LOCKED" && <LockedView displayId={displayId} unlockPw={unlockPw} setUnlockPw={setUnlockPw} handleUnlock={handleUnlock} />}
       {status === "LOGIN" && <LoginView loginId={loginId} setLoginId={setLoginId} loginPw={loginPw} setLoginPw={setLoginPw} handleLogin={handleLogin} setStatus={setStatus} />}
-      {status === "IDLE" && <MainLobbyView enterGame={enterGameDirectly} setStatus={setStatus} />}
+
+      {/* 🔥 [수정됨] MainLobbyView에 eliminatedCount 전달 */}
+      {status === "IDLE" && <MainLobbyView enterGame={enterGameDirectly} setStatus={setStatus} eliminatedCount={eliminatedCount} />}
+
       {status === "INTRO" && (
         <div className="z-10 flex flex-col items-center w-full max-w-md">
            <div className="bg-black/50 backdrop-blur border border-white/30 text-white px-8 py-2 rounded-full font-bold text-lg mb-8 shadow-lg">
@@ -324,7 +335,7 @@ function GameContent() {
                     onUnlock={startLootLabsMission}
                     myVote={myVote}
                     onCheckResult={handleCheckResult}
-                    isProcessing={isProcessing} // 🔥 버튼 비활성화를 위해 전달
+                    isProcessing={isProcessing}
                  />
                ) : <WaitingView />}
              </div>

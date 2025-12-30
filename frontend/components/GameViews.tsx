@@ -36,7 +36,7 @@ export function DeathView({ userState, roundData, eliminatedCount, handleShare }
             <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="유언을 입력하세요... (예: 너도 들어와서 죽어봐, n라운드 정답 ***다, 1등해서 엔빵 ㄱ)"
+                placeholder="유언을 입력하세요..."
                 className="w-full h-24 bg-black border border-white/20 text-white p-4 rounded-xl focus:outline-none focus:border-white resize-none placeholder:text-gray-600"
                 maxLength={50}
             />
@@ -76,13 +76,13 @@ export function SurvivorView({ userState, roundData, handleGameAction, isRoundUn
           <h3 className="text-2xl font-bold text-white mb-2">라운드 종료</h3>
           <p className="text-gray-400 mb-8 text-sm leading-relaxed">
             이미 종료된 라운드입니다.<br/>
-            결과를 확인하려면 미션을 수행하세요.
+            게임에 합류하려면 미션을 수행하세요.
           </p>
           <button
             onClick={onUnlock}
             className="w-full bg-gradient-to-r from-red-600 to-pink-600 text-white font-bold py-4 px-8 rounded-xl hover:opacity-90 transition-all"
           >
-            잠금 해제 (광고 시청)
+            시선을 대가로 지불하고 합류
           </button>
         </div>
       )}
@@ -159,8 +159,11 @@ export function MainLobbyView({ enterGame, setStatus }: any) {
       </button>
 
       <div className="mt-20 flex gap-8 text-xs text-gray-600 font-mono border-t border-gray-900 pt-8">
-        <div>TOTAL PRIZE<br/><span className="text-white font-bold">UNKNOWN</span></div>
-        <div>PLAYERS<br/><span className="text-red-500 font-bold">LIVE</span></div>
+        <div>생존자<br/><span className="text-white font-bold">UNKNOWN</span></div>
+        <div>PLAYERS<br/>
+        <span className="text-red-500 font-bold text-lg animate-pulse">
+            {eliminatedCount ? eliminatedCount.toLocaleString() : 0}
+        </span>
       </div>
     </div>
   );
