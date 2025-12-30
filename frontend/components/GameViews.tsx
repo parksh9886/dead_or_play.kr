@@ -162,11 +162,7 @@ export function MainLobbyView({ enterGame, setStatus, eliminatedCount }: any) {
       {/* 하단 정보창 */}
       <div className="mt-20 flex gap-8 text-xs text-gray-600 font-mono border-t border-gray-900 pt-8 w-full justify-center">
         <div>
-            생존자<br/>
-            <span className="text-white font-bold">UNKNOWN</span>
-        </div>
-        <div>
-            PLAYERS<br/>
+            사망자<br/>
             <span className="text-red-500 font-bold text-lg animate-pulse">
                 {eliminatedCount ? eliminatedCount.toLocaleString() : 0}
             </span>
@@ -186,10 +182,10 @@ export function WaitingView() {
       <div className="w-12 h-1 bg-green-500 rounded-full my-6 mx-auto"></div>
       <p className="text-gray-400 text-sm mb-8 leading-relaxed">
         축하합니다.<br/>
-        다음 라운드가 시작될 때까지 대기하세요.
+        다음 라운드가 공개될 때까지 대기하세요.
       </p>
       <a href={ADMIN_INSTA_URL} target="_blank" rel="noopener noreferrer" className="w-full py-4 bg-white text-black font-bold text-lg rounded-xl hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
-        인스타그램에서 알림 받기
+        인스타그램에서 소식 받기
       </a>
     </div>
   );
