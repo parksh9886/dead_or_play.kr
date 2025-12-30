@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react"; // ✅ useState 필수
+import { useState } from "react";
 import GameRenderer from "./GameRenderer";
 
-// 1. 탈락 화면 (다잉 메시지 기능)
+// 1. 탈락 화면 (다잉 메시지 기능 포함)
 export function DeathView({ userState, roundData, eliminatedCount, handleShare }: any) {
   const [isWriting, setIsWriting] = useState(false);
   const [message, setMessage] = useState("");
@@ -128,7 +128,8 @@ export function SurvivorView({ userState, roundData, handleGameAction, isRoundUn
 }
 
 // 3. 메인 로비 (대문)
-export function MainLobbyView({ enterGame, setStatus }: any) {
+// 🔥 [수정됨] eliminatedCount props가 빠져있어서 추가했습니다!
+export function MainLobbyView({ enterGame, setStatus, eliminatedCount }: any) {
   return (
     <div className="flex flex-col items-center text-center z-10 animate-fade-in max-w-md w-full px-6">
 
@@ -158,12 +159,18 @@ export function MainLobbyView({ enterGame, setStatus }: any) {
         이미 계정이 있나요? 로그인
       </button>
 
-      <div className="mt-20 flex gap-8 text-xs text-gray-600 font-mono border-t border-gray-900 pt-8">
-        <div>생존자<br/><span className="text-white font-bold">UNKNOWN</span></div>
-        <div>PLAYERS<br/>
-        <span className="text-red-500 font-bold text-lg animate-pulse">
-            {eliminatedCount ? eliminatedCount.toLocaleString() : 0}
-        </span>
+      {/* 하단 정보창 */}
+      <div className="mt-20 flex gap-8 text-xs text-gray-600 font-mono border-t border-gray-900 pt-8 w-full justify-center">
+        <div>
+            생존자<br/>
+            <span className="text-white font-bold">UNKNOWN</span>
+        </div>
+        <div>
+            PLAYERS<br/>
+            <span className="text-red-500 font-bold text-lg animate-pulse">
+                {eliminatedCount ? eliminatedCount.toLocaleString() : 0}
+            </span>
+        </div>
       </div>
     </div>
   );
