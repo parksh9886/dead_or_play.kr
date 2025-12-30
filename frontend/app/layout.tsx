@@ -36,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   // 🔥 [수정] 본인 인스타그램 주소로 변경하세요!
-  const INSTA_URL = "https://www.instagram.com/YOUR_INSTAGRAM_ID";
+  const INSTA_URL = "https://www.instagram.com/deal_or_die.kr";
 
   return (
     <html lang="ko">

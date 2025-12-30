@@ -174,7 +174,7 @@ export function MainLobbyView({ enterGame, setStatus, eliminatedCount }: any) {
 
 // 4. 대기 화면
 export function WaitingView() {
-  const ADMIN_INSTA_URL = "https://www.instagram.com/YOUR_INSTAGRAM_ID"; // 본인 ID로 변경
+  const ADMIN_INSTA_URL = "https://www.instagram.com/deal_or_die.kr"; // 본인 ID로 변경
   return (
     <div className="z-10 flex flex-col items-center text-center p-8 bg-neutral-900/90 rounded-3xl border border-white/10 backdrop-blur-md max-w-md w-full animate-fade-in">
       <div className="text-green-500 text-6xl mb-4">✓</div>

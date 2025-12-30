@@ -114,7 +114,7 @@ export default function GameRenderer({ roundData, handleGameAction, myVote }: Ga
 
               {/* ✅ [수정됨] 문구 통일 */}
               <p className="text-gray-400 text-xs mb-3 font-medium uppercase tracking-widest animate-pulse">
-                정말 죽을수도 있습니다. 이 선택에 운명을 걸겠습니까?
+                이 선택에 운명을 걸겠습니까?
               </p>
 
               <div className="flex w-full gap-3">
