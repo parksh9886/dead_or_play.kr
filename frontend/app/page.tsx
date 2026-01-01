@@ -322,6 +322,9 @@ function GameContent() {
     let text = `💀 [DEAD OR PLAY]\n\n저는 ${eliminatedCount}번째 희생자입니다.\n(${userState?.stage}라운드 사망)\n\n`;
     if (customMessage) text += `❝ ${customMessage} ❞\n\n`;
     text += `당신의 운명을 테스트하고 상금을 받아가세요.`;
+
+    const title = "DEAL OR DIE";  // 공유 팝업에 표시될 제목을 적어주세요
+
     if (navigator.share) {
       try { await navigator.share({ title: title, text: text, url: link }); } catch (err) { console.log("공유 취소"); }
     } else {
