@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
 import { Toaster } from 'sonner';
 import { Analytics } from "@vercel/analytics/react";
+import { GoogleTagManager } from '@next/third-parties/google';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,6 +46,7 @@ export default function RootLayout({
 
   return (
     <html lang="ko">
+      <GoogleTagManager gtmId="GTM-WP88WKDF" />
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white`}>
 
         {/* 📺 배경 효과 추가 */}
