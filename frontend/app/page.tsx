@@ -25,10 +25,9 @@ function GameContent() {
   const [myVote, setMyVote] = useState<string | null>(null);
   const [isRoundUnlocked, setIsRoundUnlocked] = useState(false);
 
-  // 처리 중 상태 (광클 방지용)
+  // 처리 중 상태
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // 데이터 로딩 완료 여부 (깜빡임 방지용)
+  // 데이터 로딩 완료 여부
   const [isDataReady, setIsDataReady] = useState(false);
 
   const [instagramId, setInstagramId] = useState("");
@@ -38,82 +37,98 @@ function GameContent() {
   const [loginPw, setLoginPw] = useState("");
   const [unlockPw, setUnlockPw] = useState("");
 
-  // 🔊 [NEW] 사운드 재생 함수
+  // 🔊 [NEW] 시계 소리 전용 Ref (중단 제어용)
+  const clockAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // 🔊 일반 효과음 재생 함수 (단발성)
   const playSound = (fileName: string, volume = 0.5) => {
     try {
       const audio = new Audio(`/sounds/${fileName}`);
       audio.volume = volume;
-      audio.play().catch((err) => {
-        // 사용자가 화면을 클릭하기 전에는 브라우저 정책상 자동 재생이 막힐 수 있음
-        console.log("Audio play blocked:", err);
-      });
+      audio.play().catch(() => {});
     } catch (e) {
       console.error("Audio file missing:", fileName);
     }
   };
 
-  // 🔥 [NEW] 1. 메인 페이지 접속 시 (IDLE 상태) -> Anxiety 사운드
+  // 1. 메인 페이지 접속 시 (IDLE) -> Anxiety 사운드
   useEffect(() => {
     if (status === "IDLE") {
       playSound("Anxiety 2-Low.mp3", 0.4);
     }
   }, [status]);
 
-  // 🔥 [NEW] 2. 게임 라운드 시작 (정답 골라야 할 때) -> 시계 소리
+  // 🔥 [수정됨] 2. 시계 소리 정밀 제어 (ACTIVE일 때만 + 중복 방지)
   useEffect(() => {
-    // 게임 화면 로딩 완료(isDataReady) + 살아있음 + 아직 투표 안함
-    if (status === "INTRO" && isDataReady && userState?.isAlive && !myVote && roundData) {
-       playSound("Ticking Clock Sound.mp3", 0.3);
+    // A. 상태가 변하면 무조건 기존 시계 소리부터 끈다 (중복 방지 핵심)
+    if (clockAudioRef.current) {
+        clockAudioRef.current.pause();
+        clockAudioRef.current.currentTime = 0; // 재생 위치 초기화
+        clockAudioRef.current = null;
     }
-  }, [status, isDataReady, userState, myVote, roundData]);
+
+    // B. 재생 조건 체크 (엄격하게)
+    const shouldPlayClock =
+        status === "INTRO" &&          // 게임 화면이고
+        isDataReady &&                 // 데이터 다 불러왔고
+        userState?.isAlive &&          // 살아있고
+        !myVote &&                     // 아직 투표 안 했고
+        roundData?.status === 'ACTIVE'; // ★ 라운드가 진행 중일 때만! ★
+
+    // C. 조건 맞으면 재생 및 Ref 저장
+    if (shouldPlayClock) {
+        const audio = new Audio("/sounds/Ticking Clock Sound.mp3");
+        audio.volume = 0.3;
+        audio.play().catch(() => {}); // 자동재생 막힘 방지
+        clockAudioRef.current = audio; // 나중에 끄기 위해 저장
+    }
+
+    // D. 컴포넌트가 사라지거나 상태가 바뀔 때 뒷정리 (Cleanup)
+    return () => {
+        if (clockAudioRef.current) {
+            clockAudioRef.current.pause();
+            clockAudioRef.current = null;
+        }
+    };
+  }, [status, isDataReady, userState, myVote, roundData]); // 이 값들이 조금이라도 바뀌면 재검사
 
 
-  // 접속하자마자 전체 사망자 수 카운트 (메인 로비용)
+  // 접속자 수 카운트
   useEffect(() => {
     const fetchGlobalStats = async () => {
-      const { count } = await supabase
-        .from('tickets')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_alive', false);
-
+      const { count } = await supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('is_alive', false);
       if (count !== null) setEliminatedCount(count);
     };
     fetchGlobalStats();
   }, []);
 
   const fetchGameData = async (nonce: string) => {
-    setIsDataReady(false); // 로딩 시작
+    setIsDataReady(false);
     try {
       const { data: user } = await supabase.from('tickets').select('current_stage, is_alive').eq('nonce', nonce).single();
       if (user) {
         setUserState({ stage: user.current_stage, isAlive: user.is_alive });
-
         const { data: round } = await supabase.from('game_rounds').select('*').eq('id', user.current_stage).single();
         setRoundData(round);
-
-        // 로그인 후에도 최신 사망자 수 갱신
         const { count } = await supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('is_alive', false);
         setEliminatedCount(count || 0);
-
         if (round) {
             const { data: vote } = await supabase.from('user_votes').select('choice').eq('ticket_nonce', nonce).eq('round_id', round.id).maybeSingle();
             setMyVote(vote ? vote.choice : null);
         }
       }
     } catch (err) { console.error(err); }
-    finally { setIsDataReady(true); } // 로딩 끝
+    finally { setIsDataReady(true); }
   };
 
   useEffect(() => {
     let targetTicket = urlClickId || sessionStorage.getItem("pending_ticket") || sessionStorage.getItem("my_ticket");
-
     if (sessionStorage.getItem("pending_mission") === "true") {
        sessionStorage.removeItem("pending_mission");
        setIsRoundUnlocked(true);
        toast.success("잠금이 해제되었습니다!", { description: "이제 게임을 진행하세요." });
        targetTicket = sessionStorage.getItem("my_ticket");
     }
-
     if (targetTicket) {
       setStatus("LOADING");
       fetch(`${BACKEND_URL}/gate/callback?click_id=${targetTicket}`).then(res => res.json()).then(data => {
@@ -146,44 +161,35 @@ function GameContent() {
   const handleGameAction = async (choice: string) => {
     const nonce = sessionStorage.getItem("my_ticket");
     if (!nonce || !roundData || !userState) return;
-
     if (isProcessing) return;
     if (myVote) return toast.warning("이미 투표를 완료했습니다.");
-
     if (roundData.status === 'CLOSED' && !isRoundUnlocked) {
       toast.warning("🔒 접근 제한", { description: "잠금 해제 버튼을 눌러 미션을 수행하세요." });
       return;
     }
-
     setIsProcessing(true);
-
     try {
         if (roundData.status === 'ACTIVE' || roundData.status === 'CLOSED') {
           const { error } = await supabase.from('user_votes').upsert({ ticket_nonce: nonce, round_id: roundData.id, choice });
-
           if (roundData.status === 'ACTIVE') {
              if (!error) {
                  toast.success("투표 완료", { description: "결과 발표를 기다려주세요." });
                  setMyVote(choice);
-                 // 투표 완료 시에는 별도 사운드 없음 (필요하면 추가 가능)
+                 // 투표 완료하면 useEffect가 감지해서 시계 소리 자동으로 끕니다.
              }
              else toast.error("오류 발생");
           }
           else if (roundData.status === 'CLOSED') {
             if (choice === roundData.correct_answer) {
-              // 🔥 [NEW] 3. 정답 생존 -> Correct 사운드
               playSound("Correct 1.mp3", 0.6);
-
               toast.success("✅ 생존했습니다!", { description: "다음 라운드로 이동합니다." });
               await supabase.from('tickets').update({ current_stage: userState.stage + 1 }).eq('nonce', nonce);
               setIsRoundUnlocked(false);
               setMyVote(null);
               fetchGameData(nonce);
             } else {
-              // 🔥 [NEW] 4. 오답 탈락 -> Gun Fire + TV Off
               playSound("Gun Fire Sound.mp3", 0.8);
               setTimeout(() => playSound("TV Off Air Sound.mp3", 0.6), 1200);
-
               toast.error("❌ 사망했습니다.", { description: "당신의 운명은 여기까지입니다." });
               await supabase.from('tickets').update({ is_alive: false }).eq('nonce', nonce);
               fetchGameData(nonce);
@@ -202,23 +208,18 @@ function GameContent() {
     const nonce = sessionStorage.getItem("my_ticket");
     if (!nonce || !myVote || !roundData || !userState) return;
     if (isProcessing) return;
-
     setIsProcessing(true);
     try {
         if (myVote === roundData.correct_answer) {
-             // 🔥 [NEW] 3. 정답 생존
              playSound("Correct 1.mp3", 0.6);
-
              toast.success("🎉 생존 성공!", { description: "다음 라운드로 이동합니다." });
              await supabase.from('tickets').update({ current_stage: userState.stage + 1 }).eq('nonce', nonce);
              setIsRoundUnlocked(false);
              setMyVote(null);
              fetchGameData(nonce);
         } else {
-             // 🔥 [NEW] 4. 오답 탈락
              playSound("Gun Fire Sound.mp3", 0.8);
              setTimeout(() => playSound("TV Off Air Sound.mp3", 0.6), 1200);
-
              toast.error("💀 사망했습니다.", { description: "아쉽지만 여기까지입니다." });
              await supabase.from('tickets').update({ is_alive: false }).eq('nonce', nonce);
              fetchGameData(nonce);
@@ -232,13 +233,10 @@ function GameContent() {
 
   const handleRegister = async () => {
     if (isProcessing) return;
-
     const cleanId = instagramId.trim().toLowerCase();
     const cleanPw = password.trim().toLowerCase();
     let currentTicket = urlClickId || sessionStorage.getItem("pending_ticket");
-
     setIsProcessing(true);
-
     if (!currentTicket) {
         try {
             const res = await fetch(`${BACKEND_URL}/gate/create`, { method: "POST" });
@@ -252,33 +250,27 @@ function GameContent() {
             return toast.error("서버 통신 오류");
         }
     }
-
     if (!cleanId) { setIsProcessing(false); return toast.warning("ID 입력 필요"); }
     if (cleanPw.length < 4) { setIsProcessing(false); return toast.warning("비밀번호 4자리 이상"); }
     if (cleanPw !== confirmPassword.trim().toLowerCase()) { setIsProcessing(false); return toast.warning("비밀번호 불일치"); }
-
     try {
       const { data: existingUser } = await supabase.from('tickets').select('instagram_id').eq('instagram_id', cleanId).maybeSingle();
       if (existingUser) { setIsProcessing(false); return toast.error("이미 사용 중인 ID입니다."); }
-
       const res = await fetch(`${BACKEND_URL}/gate/register`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ click_id: currentTicket, password: cleanPw, instagram_id: cleanId }),
       });
       const data = await res.json();
-
       if (res.ok && data.status === "SUCCESS") {
         sessionStorage.setItem("my_ticket", currentTicket!);
         setIsRegistered(true);
         setDisplayId(cleanId);
         setStatus("INTRO");
-
         try {
           const ipRes = await fetch('https://api.ipify.org?format=json');
           const ipData = await ipRes.json();
           if (ipData.ip) await supabase.from('tickets').update({ ip_address: ipData.ip }).eq('nonce', currentTicket);
         } catch (err) { console.error("IP Logging Failed", err); }
-
         fetchGameData(currentTicket!);
         toast.success("등록 완료!", { description: "환영합니다." });
       } else toast.error(data.message);
@@ -289,7 +281,6 @@ function GameContent() {
   const handleLogin = async () => {
     if (isProcessing) return;
     setIsProcessing(true);
-
     const cleanId = loginId.trim().toLowerCase();
     const cleanPw = loginPw.trim().toLowerCase();
     try {
@@ -313,7 +304,6 @@ function GameContent() {
   const handleUnlock = async () => {
     if (isProcessing) return;
     setIsProcessing(true);
-
     try {
       const res = await fetch(`${BACKEND_URL}/gate/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ instagram_id: displayId.toLowerCase(), password: unlockPw.trim().toLowerCase() }), });
       const data = await res.json();
@@ -330,28 +320,14 @@ function GameContent() {
   const handleShare = async (customMessage?: string) => {
     const link = "https://dead-or-play-kr.vercel.app/";
     const title = "DEAD OR PLAY";
-
     let text = `💀 [Deal or Die]\n\n저는 ${eliminatedCount}번째 희생자입니다.\n(${userState?.stage}라운드 사망)\n\n`;
-
-    if (customMessage) {
-        text += `❝ ${customMessage} ❞\n\n`;
-    }
-
+    if (customMessage) text += `❝ ${customMessage} ❞\n\n`;
     text += `당신의 운명을 테스트하고 상금을 받아가세요.`;
-
     if (navigator.share) {
-      try {
-        await navigator.share({
-          title: title,
-          text: text,
-          url: link,
-        });
-      } catch (err) { console.log("공유 취소"); }
+      try { await navigator.share({ title: title, text: text, url: link }); } catch (err) { console.log("공유 취소"); }
     } else {
       const copyText = `${text}\n${link}`;
-      navigator.clipboard.writeText(copyText).then(() => {
-        alert("🩸 유언장이 복사되었습니다!\n친구에게 붙여넣기(Ctrl+V) 하세요.");
-      });
+      navigator.clipboard.writeText(copyText).then(() => { alert("🩸 유언장이 복사되었습니다!\n친구에게 붙여넣기(Ctrl+V) 하세요."); });
     }
   };
 
