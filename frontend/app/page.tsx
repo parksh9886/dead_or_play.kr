@@ -359,10 +359,10 @@ function GameContent() {
                     <div className="text-center p-8 bg-gray-900/80 border border-gray-700 rounded-2xl shadow-2xl backdrop-blur-md animate-fade-in-up">
                         <div className="text-6xl mb-4">✅</div>
                         <h2 className="text-3xl font-black text-white mb-2 tracking-tighter">REGISTER COMPLETE</h2>
-                        <div className="w-16 h-1 bg-red-600 mx-auto mb-6"></div>
+                        <div className="w-16 h-1 bg-green-600 mx-auto mb-6"></div>
                         <p className="text-gray-300 mb-6 leading-relaxed">
                             참가 등록이 완료되었습니다.<br/>
-                            <span className="font-bold text-red-500">게임이 시작되면 인스타그램에서 공지를 드립니다.</span>
+                            <span className="font-bold text-green-500">게임이 시작되면 인스타그램에서 공지를 드립니다.</span>
                             <br/>그때 다시 접속해주세요.
                         </p>
                         <div className="text-xs text-gray-500 font-mono">
