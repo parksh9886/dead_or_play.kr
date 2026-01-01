@@ -361,8 +361,8 @@ function GameContent() {
                         <h2 className="text-3xl font-black text-white mb-2 tracking-tighter">PRE-ORDER COMPLETE</h2>
                         <div className="w-16 h-1 bg-red-600 mx-auto mb-6"></div>
                         <p className="text-gray-300 mb-6 leading-relaxed">
-                            사전 예약이 완료되었습니다.<br/>
-                            <span className="font-bold text-red-500">게임이 시작되면 인스타그램 DM으로 알림을 드립니다.</span>
+                            참가 등록이 완료되었습니다.<br/>
+                            <span className="font-bold text-red-500">게임이 시작되면 인스타그램에서 공지를 드립니다.</span>
                             <br/>그때 다시 접속해주세요.
                         </p>
                         <div className="text-xs text-gray-500 font-mono">
