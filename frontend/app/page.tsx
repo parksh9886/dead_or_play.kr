@@ -27,7 +27,6 @@ function GameContent() {
 
   // 처리 중 상태
   const [isProcessing, setIsProcessing] = useState(false);
-  // 데이터 로딩 완료 여부
   const [isDataReady, setIsDataReady] = useState(false);
 
   const [instagramId, setInstagramId] = useState("");
@@ -37,60 +36,48 @@ function GameContent() {
   const [loginPw, setLoginPw] = useState("");
   const [unlockPw, setUnlockPw] = useState("");
 
-  // 🔊 [NEW] 시계 소리 전용 Ref (중단 제어용)
-  const clockAudioRef = useRef<HTMLAudioElement | null>(null);
+  // 🔊 오디오 객체 관리 (Ref로 관리해야 끊김 없이 제어 가능)
+  const bgmRef = useRef<HTMLAudioElement | null>(null);   // 메인 BGM
+  const clockRef = useRef<HTMLAudioElement | null>(null); // 시계 소리
 
-  // 🔊 일반 효과음 재생 함수 (단발성)
-  const playSound = (fileName: string, volume = 0.5) => {
+  // 🔊 사운드 재생 함수 (파일 이름 그대로 사용)
+  const playSound = (fileName: string, volume = 0.5, loop = false) => {
     try {
       const audio = new Audio(`/sounds/${fileName}`);
       audio.volume = volume;
-      audio.play().catch(() => {});
+      audio.loop = loop;
+      audio.play().catch((e) => console.log("Sound play blocked:", e));
+      return audio;
     } catch (e) {
-      console.error("Audio file missing:", fileName);
+      console.error("Audio error:", e);
+      return null;
     }
   };
 
-  // 1. 메인 페이지 접속 시 (IDLE) -> Anxiety 사운드
+  // 🔊 시계 소리 끄기 함수
+  const stopClockSound = () => {
+    if (clockRef.current) {
+      clockRef.current.pause();
+      clockRef.current.currentTime = 0;
+      clockRef.current = null;
+    }
+  };
+
+  // 🔥 1. 메인 화면 진입 시 (클릭하면 재생되도록 버튼 핸들러에 연결)
+  const playMainBgm = () => {
+    if (!bgmRef.current) {
+      bgmRef.current = playSound("Anxiety 2-Low.mp3", 0.4, true); // 반복 재생
+    }
+  };
+
+  // 🔥 2. 게임 시작 시 (DEAL 패널 뜰 때 소리 재생을 위해 상태 감지)
+  // GameRenderer에서 선택(onSelect)하면 myVote는 아직 null이고 로컬 state만 바뀜.
+  // 따라서 여기서는 'myVote가 생기면(제출하면)' 소리를 끄는 로직만 담당.
   useEffect(() => {
-    if (status === "IDLE") {
-      playSound("Anxiety 2-Low.mp3", 0.4);
+    if (myVote) {
+      stopClockSound(); // 투표 완료되면 시계 소리 즉시 정지
     }
-  }, [status]);
-
-  // 🔥 [수정됨] 2. 시계 소리 정밀 제어 (ACTIVE일 때만 + 중복 방지)
-  useEffect(() => {
-    // A. 상태가 변하면 무조건 기존 시계 소리부터 끈다 (중복 방지 핵심)
-    if (clockAudioRef.current) {
-        clockAudioRef.current.pause();
-        clockAudioRef.current.currentTime = 0; // 재생 위치 초기화
-        clockAudioRef.current = null;
-    }
-
-    // B. 재생 조건 체크 (엄격하게)
-    const shouldPlayClock =
-        status === "INTRO" &&          // 게임 화면이고
-        isDataReady &&                 // 데이터 다 불러왔고
-        userState?.isAlive &&          // 살아있고
-        !myVote &&                     // 아직 투표 안 했고
-        roundData?.status === 'ACTIVE'; // ★ 라운드가 진행 중일 때만! ★
-
-    // C. 조건 맞으면 재생 및 Ref 저장
-    if (shouldPlayClock) {
-        const audio = new Audio("/sounds/Ticking Clock Sound.mp3");
-        audio.volume = 0.3;
-        audio.play().catch(() => {}); // 자동재생 막힘 방지
-        clockAudioRef.current = audio; // 나중에 끄기 위해 저장
-    }
-
-    // D. 컴포넌트가 사라지거나 상태가 바뀔 때 뒷정리 (Cleanup)
-    return () => {
-        if (clockAudioRef.current) {
-            clockAudioRef.current.pause();
-            clockAudioRef.current = null;
-        }
-    };
-  }, [status, isDataReady, userState, myVote, roundData]); // 이 값들이 조금이라도 바뀌면 재검사
+  }, [myVote]);
 
 
   // 접속자 수 카운트
@@ -159,6 +146,9 @@ function GameContent() {
   };
 
   const handleGameAction = async (choice: string) => {
+    // 🔥 [수정] 버튼 누르는 순간 시계 소리 끔
+    stopClockSound();
+
     const nonce = sessionStorage.getItem("my_ticket");
     if (!nonce || !roundData || !userState) return;
     if (isProcessing) return;
@@ -175,20 +165,19 @@ function GameContent() {
              if (!error) {
                  toast.success("투표 완료", { description: "결과 발표를 기다려주세요." });
                  setMyVote(choice);
-                 // 투표 완료하면 useEffect가 감지해서 시계 소리 자동으로 끕니다.
              }
              else toast.error("오류 발생");
           }
           else if (roundData.status === 'CLOSED') {
             if (choice === roundData.correct_answer) {
-              playSound("Correct 1.mp3", 0.6);
+              playSound("Correct 1.mp3", 0.6); // 정답
               toast.success("✅ 생존했습니다!", { description: "다음 라운드로 이동합니다." });
               await supabase.from('tickets').update({ current_stage: userState.stage + 1 }).eq('nonce', nonce);
               setIsRoundUnlocked(false);
               setMyVote(null);
               fetchGameData(nonce);
             } else {
-              playSound("Gun Fire Sound.mp3", 0.8);
+              playSound("Gun Fire Sound.mp3", 0.8); // 탈락
               setTimeout(() => playSound("TV Off Air Sound.mp3", 0.6), 1200);
               toast.error("❌ 사망했습니다.", { description: "당신의 운명은 여기까지입니다." });
               await supabase.from('tickets').update({ is_alive: false }).eq('nonce', nonce);
@@ -229,7 +218,18 @@ function GameContent() {
     }
   };
 
-  const enterGameDirectly = () => { setStatus("INTRO"); };
+  // 🔥 [수정] 메인 화면 버튼 클릭 시 BGM 재생
+  const enterGameDirectly = () => {
+    playMainBgm(); // 여기서 재생!
+    setStatus("INTRO");
+  };
+
+  // 🔥 [추가] 하위 컴포넌트(GameRenderer)에서 선택(Select)했을 때 시계 소리 켜기
+  const onOptionSelected = () => {
+    if (!clockRef.current) {
+        clockRef.current = playSound("Ticking Clock Sound.mp3", 0.4, true); // 반복 재생
+    }
+  };
 
   const handleRegister = async () => {
     if (isProcessing) return;
@@ -318,9 +318,8 @@ function GameContent() {
   };
 
   const handleShare = async (customMessage?: string) => {
-    const link = "https://dead-or-play-kr.vercel.app/";
-    const title = "DEAD OR PLAY";
-    let text = `💀 [Deal or Die]\n\n저는 ${eliminatedCount}번째 희생자입니다.\n(${userState?.stage}라운드 사망)\n\n`;
+    const link = "https://deadorplay.site";
+    const text = `💀 [DEAD OR PLAY]\n\n저는 ${eliminatedCount}번째 희생자입니다.\n(${userState?.stage}라운드 사망)\n\n`;
     if (customMessage) text += `❝ ${customMessage} ❞\n\n`;
     text += `당신의 운명을 테스트하고 상금을 받아가세요.`;
     if (navigator.share) {
@@ -338,6 +337,7 @@ function GameContent() {
       {status === "LOCKED" && <LockedView displayId={displayId} unlockPw={unlockPw} setUnlockPw={setUnlockPw} handleUnlock={handleUnlock} />}
       {status === "LOGIN" && <LoginView loginId={loginId} setLoginId={setLoginId} loginPw={loginPw} setLoginPw={setLoginPw} handleLogin={handleLogin} setStatus={setStatus} />}
 
+      {/* 🔥 enterGame에 함수 연결 */}
       {status === "IDLE" && <MainLobbyView enterGame={enterGameDirectly} setStatus={setStatus} eliminatedCount={eliminatedCount} />}
 
       {status === "INTRO" && (
@@ -363,6 +363,8 @@ function GameContent() {
                     myVote={myVote}
                     onCheckResult={handleCheckResult}
                     isProcessing={isProcessing}
+                    // 🔥 시계 소리 트리거를 위해 함수 전달
+                    onOptionSelect={onOptionSelected}
                  />
                ) : <WaitingView />}
              </div>

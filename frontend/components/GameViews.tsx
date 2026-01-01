@@ -14,15 +14,12 @@ export function DeathView({ userState, roundData, eliminatedCount, handleShare }
 
   return (
     <div className="text-center p-8 bg-neutral-900/90 rounded-3xl border border-red-900/50 backdrop-blur-md w-full max-w-md mx-auto">
-
-      {/* 깔끔한 타이틀 */}
       <h2 className="text-6xl font-black text-red-600 mb-4 tracking-tighter">YOU DIED</h2>
       <p className="text-xl text-white font-bold mb-2">{userState?.stage}라운드에서 사망했습니다.</p>
       <p className="text-gray-500 mb-8 text-sm">
         당신은 이 게임의 {eliminatedCount}번째 희생자 입니다.
       </p>
 
-      {/* 입력창이 닫혀있을 때 */}
       {!isWriting ? (
         <button
           onClick={() => setIsWriting(true)}
@@ -31,7 +28,6 @@ export function DeathView({ userState, roundData, eliminatedCount, handleShare }
           유언을 남기고 초대장을 보내세요.
         </button>
       ) : (
-        /* 입력창이 열렸을 때 */
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <textarea
                 value={message}
@@ -40,14 +36,12 @@ export function DeathView({ userState, roundData, eliminatedCount, handleShare }
                 className="w-full h-24 bg-black border border-white/20 text-white p-4 rounded-xl focus:outline-none focus:border-white resize-none placeholder:text-gray-600"
                 maxLength={50}
             />
-
             <button
                 onClick={onFinalShare}
                 className="w-full bg-white hover:bg-gray-200 text-black font-black px-6 py-4 rounded-xl transition-all shadow-lg"
             >
                 초대장 전송
             </button>
-
             <button
                 onClick={() => setIsWriting(false)}
                 className="text-gray-500 text-xs underline underline-offset-4"
@@ -61,7 +55,8 @@ export function DeathView({ userState, roundData, eliminatedCount, handleShare }
 }
 
 // 2. 생존자 게임 화면 (메인)
-export function SurvivorView({ userState, roundData, handleGameAction, isRoundUnlocked, onUnlock, myVote, onCheckResult, isProcessing }: any) {
+// 🔥 [수정됨] onOptionSelect props 추가 및 전달
+export function SurvivorView({ userState, roundData, handleGameAction, isRoundUnlocked, onUnlock, myVote, onCheckResult, isProcessing, onOptionSelect }: any) {
 
   const isLocked = roundData.status === 'CLOSED' && !isRoundUnlocked && !myVote;
   const showResultButton = roundData.status === 'CLOSED' && myVote;
@@ -99,7 +94,13 @@ export function SurvivorView({ userState, roundData, handleGameAction, isRoundUn
           <p className="text-gray-400 text-sm break-keep">{roundData.description}</p>
         </div>
 
-        <GameRenderer roundData={roundData} handleGameAction={isLocked ? () => {} : handleGameAction} myVote={myVote} />
+        {/* 🔥 GameRenderer에 onOptionSelect 전달 */}
+        <GameRenderer
+            roundData={roundData}
+            handleGameAction={isLocked ? () => {} : handleGameAction}
+            myVote={myVote}
+            onOptionSelect={onOptionSelect}
+        />
 
         {showResultButton && (
           <div className="mt-8 animate-in slide-in-from-bottom-4 fade-in duration-500">
@@ -128,12 +129,9 @@ export function SurvivorView({ userState, roundData, handleGameAction, isRoundUn
 }
 
 // 3. 메인 로비 (대문)
-// 🔥 [수정됨] eliminatedCount props가 빠져있어서 추가했습니다!
 export function MainLobbyView({ enterGame, setStatus, eliminatedCount }: any) {
   return (
     <div className="flex flex-col items-center text-center z-10 animate-fade-in max-w-md w-full px-6">
-
-      {/* 타이틀: 정적 글리치 효과 (흰색) */}
       <div className="mb-16 mt-8">
         <h1 className="text-7xl md:text-8xl font-black tracking-tighter mb-4 select-none">
           <span className="static-glitch block">DEAL</span>
@@ -159,7 +157,6 @@ export function MainLobbyView({ enterGame, setStatus, eliminatedCount }: any) {
         이미 계정이 있나요? 로그인
       </button>
 
-      {/* 하단 정보창 */}
       <div className="mt-20 flex gap-8 text-xs text-gray-600 font-mono border-t border-gray-900 pt-8 w-full justify-center">
         <div>
             사망자<br/>
@@ -174,7 +171,7 @@ export function MainLobbyView({ enterGame, setStatus, eliminatedCount }: any) {
 
 // 4. 대기 화면
 export function WaitingView() {
-  const ADMIN_INSTA_URL = "https://www.instagram.com/deal_or_die.kr"; // 본인 ID로 변경
+  const ADMIN_INSTA_URL = "https://www.instagram.com/deal_or_die.kr";
   return (
     <div className="z-10 flex flex-col items-center text-center p-8 bg-neutral-900/90 rounded-3xl border border-white/10 backdrop-blur-md max-w-md w-full animate-fade-in">
       <div className="text-green-500 text-6xl mb-4">✓</div>

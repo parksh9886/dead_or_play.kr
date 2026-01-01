@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import VoteGame from "./games/VoteGame";
 import QuizGame from "./games/QuizGame";
 
+// 🔥 [수정됨] onOptionSelect 인터페이스 추가
 interface GameRendererProps {
   roundData: {
     game_type: string;
@@ -12,9 +13,10 @@ interface GameRendererProps {
   };
   handleGameAction: (answer: string) => void;
   myVote?: string | null;
+  onOptionSelect?: () => void;
 }
 
-export default function GameRenderer({ roundData, handleGameAction, myVote }: GameRendererProps) {
+export default function GameRenderer({ roundData, handleGameAction, myVote, onOptionSelect }: GameRendererProps) {
 
   // 현재 선택(입력)한 값 (아직 제출 안 함)
   const [localSelection, setLocalSelection] = useState<string | null>(null);
@@ -22,6 +24,8 @@ export default function GameRenderer({ roundData, handleGameAction, myVote }: Ga
   // 하위 게임에서 "나 이거 골랐어/입력했어" 라고 알려주는 함수
   const handleSelect = (value: string) => {
     setLocalSelection(value);
+    // 🔥 [추가됨] 선택하는 순간 시계 소리 트리거 실행!
+    if (onOptionSelect) onOptionSelect();
   };
 
   // 진짜 제출 (DEAL 버튼 클릭 시)
