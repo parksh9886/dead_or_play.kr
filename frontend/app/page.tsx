@@ -357,8 +357,8 @@ function GameContent() {
                  // 🔥 [수정] 게임이 닫혀 있으면 '사전예약 대기 화면' 보여줌
                  !isGameOpen ? (
                     <div className="text-center p-8 bg-gray-900/80 border border-gray-700 rounded-2xl shadow-2xl backdrop-blur-md animate-fade-in-up">
-                        <div className="text-6xl mb-4">🔐</div>
-                        <h2 className="text-3xl font-black text-white mb-2 tracking-tighter">PRE-ORDER COMPLETE</h2>
+                        <div className="text-6xl mb-4">✅</div>
+                        <h2 className="text-3xl font-black text-white mb-2 tracking-tighter">REGISTER COMPLETE</h2>
                         <div className="w-16 h-1 bg-red-600 mx-auto mb-6"></div>
                         <p className="text-gray-300 mb-6 leading-relaxed">
                             참가 등록이 완료되었습니다.<br/>
