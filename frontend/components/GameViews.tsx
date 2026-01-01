@@ -104,7 +104,7 @@ export function SurvivorView({ userState, roundData, handleGameAction, isRoundUn
         {showResultButton && (
           <div className="mt-8 animate-in slide-in-from-bottom-4 fade-in duration-500">
              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-6 text-center">
-                <p className="text-green-400 font-bold mb-1">투표 완료</p>
+                <p className="text-green-400 font-bold mb-1">라운드 종료</p>
                 <p className="text-xs text-gray-500 mb-4">결과가 집계되었습니다.</p>
 
                 <button
@@ -185,7 +185,7 @@ export function WaitingView() {
         다음 라운드가 공개될 때까지 대기하세요.
       </p>
       <a href={ADMIN_INSTA_URL} target="_blank" rel="noopener noreferrer" className="w-full py-4 bg-white text-black font-bold text-lg rounded-xl hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
-        인스타그램에서 소식 받기
+        인스타그램에서 소식 확인
       </a>
     </div>
   );

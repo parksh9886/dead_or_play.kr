@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
@@ -28,7 +28,7 @@ function GameContent() {
   // 처리 중 상태 (광클 방지용)
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // 🔥 [NEW] 데이터 로딩 완료 여부 (깜빡임 방지용)
+  // 데이터 로딩 완료 여부 (깜빡임 방지용)
   const [isDataReady, setIsDataReady] = useState(false);
 
   const [instagramId, setInstagramId] = useState("");
@@ -37,6 +37,36 @@ function GameContent() {
   const [loginId, setLoginId] = useState("");
   const [loginPw, setLoginPw] = useState("");
   const [unlockPw, setUnlockPw] = useState("");
+
+  // 🔊 [NEW] 사운드 재생 함수
+  const playSound = (fileName: string, volume = 0.5) => {
+    try {
+      const audio = new Audio(`/sounds/${fileName}`);
+      audio.volume = volume;
+      audio.play().catch((err) => {
+        // 사용자가 화면을 클릭하기 전에는 브라우저 정책상 자동 재생이 막힐 수 있음
+        console.log("Audio play blocked:", err);
+      });
+    } catch (e) {
+      console.error("Audio file missing:", fileName);
+    }
+  };
+
+  // 🔥 [NEW] 1. 메인 페이지 접속 시 (IDLE 상태) -> Anxiety 사운드
+  useEffect(() => {
+    if (status === "IDLE") {
+      playSound("Anxiety 2-Low.mp3", 0.4);
+    }
+  }, [status]);
+
+  // 🔥 [NEW] 2. 게임 라운드 시작 (정답 골라야 할 때) -> 시계 소리
+  useEffect(() => {
+    // 게임 화면 로딩 완료(isDataReady) + 살아있음 + 아직 투표 안함
+    if (status === "INTRO" && isDataReady && userState?.isAlive && !myVote && roundData) {
+       playSound("Ticking Clock Sound.mp3", 0.3);
+    }
+  }, [status, isDataReady, userState, myVote, roundData]);
+
 
   // 접속하자마자 전체 사망자 수 카운트 (메인 로비용)
   useEffect(() => {
@@ -52,7 +82,7 @@ function GameContent() {
   }, []);
 
   const fetchGameData = async (nonce: string) => {
-    setIsDataReady(false); // 🔥 로딩 시작 (화면 숨김)
+    setIsDataReady(false); // 로딩 시작
     try {
       const { data: user } = await supabase.from('tickets').select('current_stage, is_alive').eq('nonce', nonce).single();
       if (user) {
@@ -71,7 +101,7 @@ function GameContent() {
         }
       }
     } catch (err) { console.error(err); }
-    finally { setIsDataReady(true); } // 🔥 로딩 끝 (화면 보여줌)
+    finally { setIsDataReady(true); } // 로딩 끝
   };
 
   useEffect(() => {
@@ -135,17 +165,25 @@ function GameContent() {
              if (!error) {
                  toast.success("투표 완료", { description: "결과 발표를 기다려주세요." });
                  setMyVote(choice);
+                 // 투표 완료 시에는 별도 사운드 없음 (필요하면 추가 가능)
              }
              else toast.error("오류 발생");
           }
           else if (roundData.status === 'CLOSED') {
             if (choice === roundData.correct_answer) {
+              // 🔥 [NEW] 3. 정답 생존 -> Correct 사운드
+              playSound("Correct 1.mp3", 0.6);
+
               toast.success("✅ 생존했습니다!", { description: "다음 라운드로 이동합니다." });
               await supabase.from('tickets').update({ current_stage: userState.stage + 1 }).eq('nonce', nonce);
               setIsRoundUnlocked(false);
               setMyVote(null);
               fetchGameData(nonce);
             } else {
+              // 🔥 [NEW] 4. 오답 탈락 -> Gun Fire + TV Off
+              playSound("Gun Fire Sound.mp3", 0.8);
+              setTimeout(() => playSound("TV Off Air Sound.mp3", 0.6), 1200);
+
               toast.error("❌ 사망했습니다.", { description: "당신의 운명은 여기까지입니다." });
               await supabase.from('tickets').update({ is_alive: false }).eq('nonce', nonce);
               fetchGameData(nonce);
@@ -168,12 +206,19 @@ function GameContent() {
     setIsProcessing(true);
     try {
         if (myVote === roundData.correct_answer) {
+             // 🔥 [NEW] 3. 정답 생존
+             playSound("Correct 1.mp3", 0.6);
+
              toast.success("🎉 생존 성공!", { description: "다음 라운드로 이동합니다." });
              await supabase.from('tickets').update({ current_stage: userState.stage + 1 }).eq('nonce', nonce);
              setIsRoundUnlocked(false);
              setMyVote(null);
              fetchGameData(nonce);
         } else {
+             // 🔥 [NEW] 4. 오답 탈락
+             playSound("Gun Fire Sound.mp3", 0.8);
+             setTimeout(() => playSound("TV Off Air Sound.mp3", 0.6), 1200);
+
              toast.error("💀 사망했습니다.", { description: "아쉽지만 여기까지입니다." });
              await supabase.from('tickets').update({ is_alive: false }).eq('nonce', nonce);
              fetchGameData(nonce);
@@ -328,7 +373,6 @@ function GameContent() {
              <RegisterView instagramId={instagramId} setInstagramId={setInstagramId} password={password} setPassword={setPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} handleRegister={handleRegister} setStatus={setStatus} />
            ) : (
              <div className="w-full">
-               {/* 🔥 [수정됨] isDataReady가 false일 땐 화면을 숨기거나 로딩만 표시 */}
                {!isDataReady ? (
                   <div className="text-gray-500 text-xs animate-pulse tracking-widest mt-10">LOADING DATA...</div>
                ) : userState && !userState.isAlive ? (

@@ -86,7 +86,7 @@ export default function RootLayout({
           {/* 텍스트 */}
           <div className="flex flex-col items-start leading-none">
             <span className="text-[8px] text-gray-400 group-hover:text-gray-600 font-bold uppercase tracking-widest mb-[2px]">
-              Game Master
+              DEAL_or_DIE.kr
             </span>
             <span className="text-xs font-black tracking-wider">
               OFFICIAL
