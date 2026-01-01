@@ -28,7 +28,15 @@ export const metadata: Metadata = {
     description: "지금 당신의 친구들이 탈락하고 있습니다. 참여하시겠습니까?",
     url: "https://www.dealordie.kr",
     siteName: "DEAL or DIE",
-    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    // 🔥 [수정됨] 공유 썸네일을 로고 이미지로 변경
+    images: [
+      {
+        url: "/images/main-logo.png", // 👈 public/images 폴더에 파일이 있어야 합니다!
+        width: 1200,
+        height: 630,
+        alt: "DEAL or DIE Main Logo"
+      }
+    ],
     locale: "ko_KR",
     type: "website",
   },
@@ -43,7 +51,7 @@ export default function RootLayout({
 
   return (
     <html lang="ko">
-      {/* ✅ [2] 여기에 GTM ID 추가 (아까 이미지에 있던 ID 적용함) */}
+      {/* ✅ [2] GTM ID 적용됨 */}
       <GoogleTagManager gtmId="GTM-WP88WKDF" />
 
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white`}>
