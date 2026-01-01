@@ -18,6 +18,9 @@ function GameContent() {
   const [displayId, setDisplayId] = useState("");
   const [isRegistered, setIsRegistered] = useState(false);
 
+  // 🔥 [추가] 게임 전체 오픈 상태
+  const [isGameOpen, setIsGameOpen] = useState(false);
+
   const [userState, setUserState] = useState<{ stage: number; isAlive: boolean } | null>(null);
   const [roundData, setRoundData] = useState<any>(null);
   const [eliminatedCount, setEliminatedCount] = useState<number>(0);
@@ -36,11 +39,9 @@ function GameContent() {
   const [loginPw, setLoginPw] = useState("");
   const [unlockPw, setUnlockPw] = useState("");
 
-  // 🔊 오디오 객체 관리 (Ref로 관리해야 끊김 없이 제어 가능)
-  const bgmRef = useRef<HTMLAudioElement | null>(null);   // 메인 BGM
-  const clockRef = useRef<HTMLAudioElement | null>(null); // 시계 소리
+  const bgmRef = useRef<HTMLAudioElement | null>(null);
+  const clockRef = useRef<HTMLAudioElement | null>(null);
 
-  // 🔊 사운드 재생 함수 (파일 이름 그대로 사용)
   const playSound = (fileName: string, volume = 0.5, loop = false) => {
     try {
       const audio = new Audio(`/sounds/${fileName}`);
@@ -54,7 +55,6 @@ function GameContent() {
     }
   };
 
-  // 🔊 시계 소리 끄기 함수
   const stopClockSound = () => {
     if (clockRef.current) {
       clockRef.current.pause();
@@ -63,24 +63,25 @@ function GameContent() {
     }
   };
 
-  // 🔥 1. 메인 화면 진입 시 (클릭하면 재생되도록 버튼 핸들러에 연결)
   const playMainBgm = () => {
     if (!bgmRef.current) {
-      bgmRef.current = playSound("Anxiety 2-Low.mp3", 0.4, true); // 반복 재생
+      bgmRef.current = playSound("Anxiety 2-Low.mp3", 0.4, true);
     }
   };
 
-  // 🔥 2. 게임 시작 시 (DEAL 패널 뜰 때 소리 재생을 위해 상태 감지)
-  // GameRenderer에서 선택(onSelect)하면 myVote는 아직 null이고 로컬 state만 바뀜.
-  // 따라서 여기서는 'myVote가 생기면(제출하면)' 소리를 끄는 로직만 담당.
   useEffect(() => {
-    if (myVote) {
-      stopClockSound(); // 투표 완료되면 시계 소리 즉시 정지
-    }
+    if (myVote) stopClockSound();
   }, [myVote]);
 
+  // 🔥 [추가] 게임 오픈 상태 체크
+  useEffect(() => {
+    const checkGameStatus = async () => {
+      const { data } = await supabase.from('app_settings').select('is_game_open').single();
+      if (data) setIsGameOpen(data.is_game_open);
+    };
+    checkGameStatus();
+  }, []);
 
-  // 접속자 수 카운트
   useEffect(() => {
     const fetchGlobalStats = async () => {
       const { count } = await supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('is_alive', false);
@@ -95,8 +96,11 @@ function GameContent() {
       const { data: user } = await supabase.from('tickets').select('current_stage, is_alive').eq('nonce', nonce).single();
       if (user) {
         setUserState({ stage: user.current_stage, isAlive: user.is_alive });
+
+        // 🔥 게임이 닫혀있으면 라운드 데이터 로딩을 건너뛰어도 됨 (어차피 안 보여줌)
         const { data: round } = await supabase.from('game_rounds').select('*').eq('id', user.current_stage).single();
         setRoundData(round);
+
         const { count } = await supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('is_alive', false);
         setEliminatedCount(count || 0);
         if (round) {
@@ -146,9 +150,7 @@ function GameContent() {
   };
 
   const handleGameAction = async (choice: string) => {
-    // 🔥 [수정] 버튼 누르는 순간 시계 소리 끔
     stopClockSound();
-
     const nonce = sessionStorage.getItem("my_ticket");
     if (!nonce || !roundData || !userState) return;
     if (isProcessing) return;
@@ -170,14 +172,14 @@ function GameContent() {
           }
           else if (roundData.status === 'CLOSED') {
             if (choice === roundData.correct_answer) {
-              playSound("Correct 1.mp3", 0.6); // 정답
+              playSound("Correct 1.mp3", 0.6);
               toast.success("✅ 생존했습니다!", { description: "다음 라운드로 이동합니다." });
               await supabase.from('tickets').update({ current_stage: userState.stage + 1 }).eq('nonce', nonce);
               setIsRoundUnlocked(false);
               setMyVote(null);
               fetchGameData(nonce);
             } else {
-              playSound("Gun Fire Sound.mp3", 0.8); // 탈락
+              playSound("Gun Fire Sound.mp3", 0.8);
               setTimeout(() => playSound("TV Off Air Sound.mp3", 0.6), 1200);
               toast.error("❌ 사망했습니다.", { description: "당신의 운명은 여기까지입니다." });
               await supabase.from('tickets').update({ is_alive: false }).eq('nonce', nonce);
@@ -218,16 +220,14 @@ function GameContent() {
     }
   };
 
-  // 🔥 [수정] 메인 화면 버튼 클릭 시 BGM 재생
   const enterGameDirectly = () => {
-    playMainBgm(); // 여기서 재생!
+    playMainBgm();
     setStatus("INTRO");
   };
 
-  // 🔥 [추가] 하위 컴포넌트(GameRenderer)에서 선택(Select)했을 때 시계 소리 켜기
   const onOptionSelected = () => {
     if (!clockRef.current) {
-        clockRef.current = playSound("Ticking Clock Sound.mp3", 0.4, true); // 반복 재생
+        clockRef.current = playSound("Ticking Clock Sound.mp3", 0.4, true);
     }
   };
 
@@ -318,12 +318,11 @@ function GameContent() {
   };
 
   const handleShare = async (customMessage?: string) => {
-    const link = "https://deadorplay.site";
+    const link = "https://www.dealordie.kr";
     let text = `💀 [DEAL OR DIE]\n\n저는 ${eliminatedCount}번째 희생자입니다.\n(${userState?.stage}라운드 사망)\n\n`;
     if (customMessage) text += `❝ ${customMessage} ❞\n\n`;
     text += `당신의 운명을 테스트하고 상금을 받아가세요.`;
-
-    const title = "DEAL or DIE";  // 공유 팝업에 표시될 제목을 적어주세요
+    const title = "DEAL or DIE";
 
     if (navigator.share) {
       try { await navigator.share({ title: title, text: text, url: link }); } catch (err) { console.log("공유 취소"); }
@@ -340,7 +339,6 @@ function GameContent() {
       {status === "LOCKED" && <LockedView displayId={displayId} unlockPw={unlockPw} setUnlockPw={setUnlockPw} handleUnlock={handleUnlock} />}
       {status === "LOGIN" && <LoginView loginId={loginId} setLoginId={setLoginId} loginPw={loginPw} setLoginPw={setLoginPw} handleLogin={handleLogin} setStatus={setStatus} />}
 
-      {/* 🔥 enterGame에 함수 연결 */}
       {status === "IDLE" && <MainLobbyView enterGame={enterGameDirectly} setStatus={setStatus} eliminatedCount={eliminatedCount} />}
 
       {status === "INTRO" && (
@@ -348,28 +346,49 @@ function GameContent() {
            <div className="bg-black/50 backdrop-blur border border-white/30 text-white px-8 py-2 rounded-full font-bold text-lg mb-8 shadow-lg">
              {isRegistered ? `ID: ${displayId}` : "GUEST"}
            </div>
+
            {!isRegistered ? (
              <RegisterView instagramId={instagramId} setInstagramId={setInstagramId} password={password} setPassword={setPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} handleRegister={handleRegister} setStatus={setStatus} />
            ) : (
              <div className="w-full">
                {!isDataReady ? (
                   <div className="text-gray-500 text-xs animate-pulse tracking-widest mt-10">LOADING DATA...</div>
-               ) : userState && !userState.isAlive ? (
-                 <DeathView userState={userState} roundData={roundData} eliminatedCount={eliminatedCount} handleShare={handleShare} />
-               ) : roundData ? (
-                 <SurvivorView
-                    userState={userState}
-                    roundData={roundData}
-                    handleGameAction={handleGameAction}
-                    isRoundUnlocked={isRoundUnlocked}
-                    onUnlock={startLootLabsMission}
-                    myVote={myVote}
-                    onCheckResult={handleCheckResult}
-                    isProcessing={isProcessing}
-                    // 🔥 시계 소리 트리거를 위해 함수 전달
-                    onOptionSelect={onOptionSelected}
-                 />
-               ) : <WaitingView />}
+               ) : (
+                 // 🔥 [수정] 게임이 닫혀 있으면 '사전예약 대기 화면' 보여줌
+                 !isGameOpen ? (
+                    <div className="text-center p-8 bg-gray-900/80 border border-gray-700 rounded-2xl shadow-2xl backdrop-blur-md animate-fade-in-up">
+                        <div className="text-6xl mb-4">🔐</div>
+                        <h2 className="text-3xl font-black text-white mb-2 tracking-tighter">PRE-ORDER COMPLETE</h2>
+                        <div className="w-16 h-1 bg-red-600 mx-auto mb-6"></div>
+                        <p className="text-gray-300 mb-6 leading-relaxed">
+                            사전 예약이 완료되었습니다.<br/>
+                            <span className="font-bold text-red-500">게임이 시작되면 인스타그램 DM으로 알림을 드립니다.</span>
+                            <br/>그때 다시 접속해주세요.
+                        </p>
+                        <div className="text-xs text-gray-500 font-mono">
+                            USER_ID: {displayId}<br/>
+                            STATUS: STANDBY
+                        </div>
+                    </div>
+                 ) : (
+                    // 🔥 게임이 열려있으면 기존 로직 (사망 여부 확인 등)
+                    userState && !userState.isAlive ? (
+                        <DeathView userState={userState} roundData={roundData} eliminatedCount={eliminatedCount} handleShare={handleShare} />
+                    ) : roundData ? (
+                        <SurvivorView
+                            userState={userState}
+                            roundData={roundData}
+                            handleGameAction={handleGameAction}
+                            isRoundUnlocked={isRoundUnlocked}
+                            onUnlock={startLootLabsMission}
+                            myVote={myVote}
+                            onCheckResult={handleCheckResult}
+                            isProcessing={isProcessing}
+                            onOptionSelect={onOptionSelected}
+                        />
+                    ) : <WaitingView />
+                 )
+               )}
              </div>
            )}
         </div>

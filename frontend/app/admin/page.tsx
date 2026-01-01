@@ -8,6 +8,9 @@ export default function AdminPage() {
   const [password, setPassword] = useState("");
   const ADMIN_PASS = "1234";
 
+  // 🔥 [추가] 전체 게임 오픈 여부 상태
+  const [isGlobalOpen, setIsGlobalOpen] = useState(false);
+
   const [rounds, setRounds] = useState<any[]>([]);
 
   // 입력 폼 상태
@@ -25,7 +28,37 @@ export default function AdminPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  const checkLogin = () => { if (password === ADMIN_PASS) { setIsAdmin(true); fetchRounds(); } else alert("비번 틀림"); };
+  const checkLogin = () => {
+    if (password === ADMIN_PASS) {
+        setIsAdmin(true);
+        fetchRounds();
+        fetchGlobalStatus(); // 🔥 로그인 시 상태 가져오기
+    } else {
+        alert("비번 틀림");
+    }
+  };
+
+  // 🔥 [추가] 게임 상태 가져오기
+  const fetchGlobalStatus = async () => {
+    const { data } = await supabase.from('app_settings').select('is_game_open').single();
+    if (data) setIsGlobalOpen(data.is_game_open);
+  };
+
+  // 🔥 [추가] 게임 상태 토글 함수
+  const toggleGlobalGame = async () => {
+    const newState = !isGlobalOpen;
+    const { error } = await supabase
+      .from('app_settings')
+      .update({ is_game_open: newState })
+      .eq('id', 1); // ID 1번 row 수정
+
+    if (!error) {
+      setIsGlobalOpen(newState);
+      alert(newState ? "🔥 게임이 오픈되었습니다! (사용자 진입 가능)" : "🔒 게임이 잠겼습니다. (사전 예약 모드)");
+    } else {
+      alert("상태 변경 실패: " + error.message);
+    }
+  };
 
   const fetchRounds = async () => {
     const { data } = await supabase.from('game_rounds').select('*').order('id', { ascending: false });
@@ -66,16 +99,12 @@ export default function AdminPage() {
       const { error } = await supabase.from('game_rounds').update(updatePayload).eq('id', editingId);
 
       if (!error) {
-        // 🔥 [수정됨] ACTIVE로 되돌릴 때: 탈락자 부활만 수행 (투표 기록 삭제는 위험하므로 제거)
         if (roundStatus === 'ACTIVE') {
-           // 부활 (이 스테이지에 있는 탈락자들 살리기)
            await supabase.from('tickets').update({ is_alive: true }).eq('current_stage', editingId);
-
            alert(`수정 완료! (라운드 ${editingId}의 탈락자 전원 부활 처리됨)`);
         } else {
            alert("수정되었습니다.");
         }
-
         resetForm();
         fetchRounds();
       } else alert(error.message);
@@ -131,6 +160,24 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-black text-white p-8 pb-32">
       <h1 className="text-3xl font-bold text-red-600 mb-8">컨트롤 타워</h1>
+
+      {/* 🔥 [추가] 글로벌 게임 상태 제어 패널 */}
+      <div className={`p-6 rounded-xl border mb-8 flex items-center justify-between ${isGlobalOpen ? 'bg-green-900/20 border-green-600' : 'bg-red-900/20 border-red-600'}`}>
+        <div>
+            <h2 className="text-xl font-bold mb-1">🌍 현재 게임 상태: <span className={isGlobalOpen ? "text-green-500" : "text-red-500"}>{isGlobalOpen ? "OPEN (진행 중)" : "CLOSED (사전 예약 중)"}</span></h2>
+            <p className="text-gray-400 text-sm">
+                {isGlobalOpen
+                    ? "사용자들이 게임을 플레이하고 있습니다."
+                    : "사용자는 회원가입만 가능하며, 게임 화면에 진입할 수 없습니다."}
+            </p>
+        </div>
+        <button
+            onClick={toggleGlobalGame}
+            className={`px-6 py-3 rounded-full font-bold shadow-lg transition-all ${isGlobalOpen ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}
+        >
+            {isGlobalOpen ? "🔒 게임 잠그기" : "🔥 게임 오픈하기"}
+        </button>
+      </div>
 
       <div className={`p-6 rounded-xl border mb-12 ${editingId ? 'bg-blue-900/30 border-blue-500' : 'bg-gray-900 border-gray-700'}`}>
         <h2 className="text-xl font-bold mb-4 flex justify-between">
