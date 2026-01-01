@@ -16,13 +16,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // 1. 여기에 구매하신 도메인 주소를 넣으세요 (https:// 포함)
+  // 예: https://www.dealordie.kr
+  metadataBase: new URL("https://www.dealordie.kr"),
+
   title: "DEAL or DIE",
   description: "운명을 건 서바이벌 게임.",
   other: { "admaven-placement": "BrHr5qHs4" },
+
   openGraph: {
     title: "DEAL or DIE",
     description: "지금 당신의 친구들이 탈락하고 있습니다. 참여하시겠습니까?",
-    url: "https://dead-or-play-kr.vercel.app",
+    // 2. 여기도 구매하신 도메인으로 바꿔주세요
+    url: "https://www.dealordie.kr",
     siteName: "DEAL or DIE",
     images: [{ url: "/og-image.png", width: 1200, height: 630 }],
     locale: "ko_KR",

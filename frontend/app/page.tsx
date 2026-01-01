@@ -319,7 +319,7 @@ function GameContent() {
 
   const handleShare = async (customMessage?: string) => {
     const link = "https://deadorplay.site";
-    let text = `💀 [DEAD OR PLAY]\n\n저는 ${eliminatedCount}번째 희생자입니다.\n(${userState?.stage}라운드 사망)\n\n`;
+    let text = `💀 [DEAL OR DIE]\n\n저는 ${eliminatedCount}번째 희생자입니다.\n(${userState?.stage}라운드 사망)\n\n`;
     if (customMessage) text += `❝ ${customMessage} ❞\n\n`;
     text += `당신의 운명을 테스트하고 상금을 받아가세요.`;
 
