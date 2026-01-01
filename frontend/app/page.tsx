@@ -343,6 +343,14 @@ function GameContent() {
 
       {status === "INTRO" && (
         <div className="z-10 flex flex-col items-center w-full max-w-md">
+
+           {/* 🔥 [추가됨] 메인 로고 이미지 */}
+           <img
+             src="/images/main-logo.png"
+             alt="DEAL or DIE Logo"
+             className="w-48 mb-8 drop-shadow-[0_0_15px_rgba(255,0,0,0.5)] animate-pulse-slow"
+           />
+
            <div className="bg-black/50 backdrop-blur border border-white/30 text-white px-8 py-2 rounded-full font-bold text-lg mb-8 shadow-lg">
              {isRegistered ? `ID: ${displayId}` : "GUEST"}
            </div>
@@ -354,7 +362,6 @@ function GameContent() {
                {!isDataReady ? (
                   <div className="text-gray-500 text-xs animate-pulse tracking-widest mt-10">LOADING DATA...</div>
                ) : (
-                 // 🔥 [수정] 게임이 닫혀 있으면 '사전예약 대기 화면' 보여줌
                  !isGameOpen ? (
                     <div className="text-center p-8 bg-gray-900/80 border border-gray-700 rounded-2xl shadow-2xl backdrop-blur-md animate-fade-in-up">
                         <div className="text-6xl mb-4">✅</div>
@@ -371,7 +378,6 @@ function GameContent() {
                         </div>
                     </div>
                  ) : (
-                    // 🔥 게임이 열려있으면 기존 로직 (사망 여부 확인 등)
                     userState && !userState.isAlive ? (
                         <DeathView userState={userState} roundData={roundData} eliminatedCount={eliminatedCount} handleShare={handleShare} />
                     ) : roundData ? (
