@@ -55,6 +55,7 @@ export function DeathView({ userState, roundData, eliminatedCount, handleShare }
 }
 
 // 2. 생존자 게임 화면 (메인)
+// 🔥 [수정됨] onOptionSelect props 추가 및 전달
 export function SurvivorView({ userState, roundData, handleGameAction, isRoundUnlocked, onUnlock, myVote, onCheckResult, isProcessing, onOptionSelect }: any) {
 
   const isLocked = roundData.status === 'CLOSED' && !isRoundUnlocked && !myVote;
@@ -93,6 +94,7 @@ export function SurvivorView({ userState, roundData, handleGameAction, isRoundUn
           <p className="text-gray-400 text-sm break-keep">{roundData.description}</p>
         </div>
 
+        {/* 🔥 GameRenderer에 onOptionSelect 전달 */}
         <GameRenderer
             roundData={roundData}
             handleGameAction={isLocked ? () => {} : handleGameAction}
@@ -126,48 +128,42 @@ export function SurvivorView({ userState, roundData, handleGameAction, isRoundUn
   );
 }
 
-// 3. 메인 로비 (대문) - 🔥 로고 이미지 적용됨
+// 3. 메인 로비 (대문)
 export function MainLobbyView({ enterGame, setStatus, eliminatedCount }: any) {
   return (
-    <div className="z-10 flex flex-col items-center justify-center text-center animate-fade-in px-4">
-
-      {/* 🩸 텍스트 대신 로고 이미지 적용 */}
-      <img
-        src="/images/main-logo.png"
-        alt="DEAL or DIE Title"
-        className="w-72 md:w-[500px] mb-6 drop-shadow-[0_0_35px_rgba(220,38,38,0.5)] animate-pulse-slow"
-      />
-
-      <p className="text-lg md:text-2xl text-gray-400 mb-12 tracking-widest uppercase font-bold">
-        당신의 운명을 시험하세요.
-      </p>
-
-      <div className="relative group w-full max-w-xs md:max-w-sm">
-        <div className="absolute -inset-1 bg-gradient-to-r from-red-600 to-pink-600 rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-tilt"></div>
-        <button
-          onClick={enterGame}
-          className="relative w-full px-8 py-6 bg-black rounded-lg leading-none flex items-center justify-center divide-x divide-gray-600"
-        >
-          <span className="flex items-center space-x-5">
-            <span className="text-gray-100 font-black text-2xl md:text-3xl tracking-tighter">CLICK TO START</span>
-          </span>
-        </button>
+    <div className="flex flex-col items-center text-center z-10 animate-fade-in max-w-md w-full px-6">
+      <div className="mb-16 mt-8">
+        <h1 className="text-7xl md:text-8xl font-black tracking-tighter mb-4 select-none">
+          <span className="static-glitch block">DEAL</span>
+          <span className="static-glitch-red text-5xl md:text-6xl block my-[-10px]">OR</span>
+          <span className="static-glitch block">DIE</span>
+        </h1>
+        <p className="text-gray-500 mt-4 text-sm font-medium tracking-[0.4em] uppercase">
+          Survival Game
+        </p>
       </div>
 
       <button
+        onClick={enterGame}
+        className="group relative w-full max-w-xs py-5 bg-white text-black font-black text-2xl rounded-2xl transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.1)] mb-4"
+      >
+        참가하기
+      </button>
+
+      <button
         onClick={() => setStatus("LOGIN")}
-        className="mt-6 text-gray-500 hover:text-white text-sm underline decoration-gray-600 underline-offset-4 transition-colors p-2"
+        className="text-gray-500 hover:text-white text-sm underline decoration-gray-600 underline-offset-4 transition-colors p-2"
       >
         이미 계정이 있나요? 로그인
       </button>
 
-      <div className="mt-16 text-gray-600 font-mono text-xs md:text-sm">
-        <p>CURRENT DEATH COUNT</p>
-        <p className="text-4xl font-black text-red-900/80 mt-2">{eliminatedCount?.toLocaleString() || 0}</p>
-      </div>
-
-      <div className="mt-8 text-[10px] text-gray-700">
-        WARNING: This game contains psychological horror elements.
+      <div className="mt-20 flex gap-8 text-xs text-gray-600 font-mono border-t border-gray-900 pt-8 w-full justify-center">
+        <div>
+            사망자<br/>
+            <span className="text-red-500 font-bold text-lg animate-pulse">
+                {eliminatedCount ? eliminatedCount.toLocaleString() : 0}
+            </span>
+        </div>
       </div>
     </div>
   );
