@@ -97,7 +97,7 @@ function GameContent() {
       if (user) {
         setUserState({ stage: user.current_stage, isAlive: user.is_alive });
 
-        // 🔥 게임이 닫혀있으면 라운드 데이터 로딩을 건너뛰어도 됨 (어차피 안 보여줌)
+        // 🔥 게임이 닫혀있으면 라운드 데이터 로딩을 건너뛰어도 됨
         const { data: round } = await supabase.from('game_rounds').select('*').eq('id', user.current_stage).single();
         setRoundData(round);
 
@@ -149,72 +149,108 @@ function GameContent() {
     window.location.href = roundData.ad_url;
   };
 
+  // ✅ [수정됨] 보안 적용된 게임 액션 (투표)
   const handleGameAction = async (choice: string) => {
     stopClockSound();
     const nonce = sessionStorage.getItem("my_ticket");
     if (!nonce || !roundData || !userState) return;
     if (isProcessing) return;
     if (myVote) return toast.warning("이미 투표를 완료했습니다.");
+
+    // 잠금 상태 체크
     if (roundData.status === 'CLOSED' && !isRoundUnlocked) {
       toast.warning("🔒 접근 제한", { description: "잠금 해제 버튼을 눌러 미션을 수행하세요." });
       return;
     }
+
     setIsProcessing(true);
+
     try {
-        if (roundData.status === 'ACTIVE' || roundData.status === 'CLOSED') {
-          const { error } = await supabase.from('user_votes').upsert({ ticket_nonce: nonce, round_id: roundData.id, choice });
+        // 🔥 [보안 핵심] 클라이언트 DB 직접 수정 금지 -> 서버 API 호출
+        const response = await fetch('/api/game/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ticket_id: nonce,
+            round_id: roundData.id,
+            choice: choice
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'SUCCESS') {
+          // 1. 투표 성공 (Active 상태)
           if (roundData.status === 'ACTIVE') {
-             if (!error) {
-                 toast.success("투표 완료", { description: "결과 발표를 기다려주세요." });
-                 setMyVote(choice);
-             }
-             else toast.error("오류 발생");
+             toast.success("투표 완료", { description: "결과 발표를 기다려주세요." });
+             setMyVote(choice);
           }
+          // 2. 즉시 결과 확인 (Closed 상태)
           else if (roundData.status === 'CLOSED') {
-            if (choice === roundData.correct_answer) {
-              playSound("Correct 1.mp3", 0.6);
-              toast.success("✅ 생존했습니다!", { description: "다음 라운드로 이동합니다." });
-              await supabase.from('tickets').update({ current_stage: userState.stage + 1 }).eq('nonce', nonce);
-              setIsRoundUnlocked(false);
-              setMyVote(null);
-              fetchGameData(nonce);
-            } else {
-              playSound("Gun Fire Sound.mp3", 0.8);
-              setTimeout(() => playSound("TV Off Air Sound.mp3", 0.6), 1200);
-              toast.error("❌ 사망했습니다.", { description: "당신의 운명은 여기까지입니다." });
-              await supabase.from('tickets').update({ is_alive: false }).eq('nonce', nonce);
-              fetchGameData(nonce);
-            }
+             if (result.is_alive) {
+                playSound("Correct 1.mp3", 0.6);
+                toast.success("✅ 생존했습니다!", { description: "다음 라운드로 이동합니다." });
+                setIsRoundUnlocked(false);
+                setMyVote(null);
+             } else {
+                playSound("Gun Fire Sound.mp3", 0.8);
+                setTimeout(() => playSound("TV Off Air Sound.mp3", 0.6), 1200);
+                toast.error("❌ 사망했습니다.", { description: "당신의 운명은 여기까지입니다." });
+             }
+             // 서버가 DB를 바꿨으니 최신 상태를 다시 불러옴
+             fetchGameData(nonce);
           }
+        } else {
+          toast.error(result.message || "오류가 발생했습니다.");
         }
     } catch (e) {
         console.error(e);
-        toast.error("처리 중 오류가 발생했습니다.");
+        toast.error("서버 통신 오류");
     } finally {
         setTimeout(() => setIsProcessing(false), 500);
     }
   };
 
+  // ✅ [수정됨] 보안 적용된 결과 확인 (이미 투표한 경우)
   const handleCheckResult = async () => {
     const nonce = sessionStorage.getItem("my_ticket");
     if (!nonce || !myVote || !roundData || !userState) return;
     if (isProcessing) return;
+
     setIsProcessing(true);
+
     try {
-        if (myVote === roundData.correct_answer) {
-             playSound("Correct 1.mp3", 0.6);
-             toast.success("🎉 생존 성공!", { description: "다음 라운드로 이동합니다." });
-             await supabase.from('tickets').update({ current_stage: userState.stage + 1 }).eq('nonce', nonce);
-             setIsRoundUnlocked(false);
-             setMyVote(null);
+        // 기존 투표 내용을 가지고 검증 요청 (API 재사용)
+        const response = await fetch('/api/game/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ticket_id: nonce,
+            round_id: roundData.id,
+            choice: myVote // 내가 했던 투표 보냄
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'SUCCESS') {
+             if (result.is_alive) {
+                 playSound("Correct 1.mp3", 0.6);
+                 toast.success("🎉 생존 성공!", { description: "다음 라운드로 이동합니다." });
+                 setIsRoundUnlocked(false);
+                 setMyVote(null);
+             } else {
+                 playSound("Gun Fire Sound.mp3", 0.8);
+                 setTimeout(() => playSound("TV Off Air Sound.mp3", 0.6), 1200);
+                 toast.error("💀 사망했습니다.", { description: "아쉽지만 여기까지입니다." });
+             }
              fetchGameData(nonce);
         } else {
-             playSound("Gun Fire Sound.mp3", 0.8);
-             setTimeout(() => playSound("TV Off Air Sound.mp3", 0.6), 1200);
-             toast.error("💀 사망했습니다.", { description: "아쉽지만 여기까지입니다." });
-             await supabase.from('tickets').update({ is_alive: false }).eq('nonce', nonce);
-             fetchGameData(nonce);
+             toast.error(result.message || "오류 발생");
         }
+
+    } catch(e) {
+        toast.error("서버 통신 오류");
     } finally {
         setTimeout(() => setIsProcessing(false), 1000);
     }
@@ -354,7 +390,6 @@ function GameContent() {
                {!isDataReady ? (
                   <div className="text-gray-500 text-xs animate-pulse tracking-widest mt-10">LOADING DATA...</div>
                ) : (
-                 // 🔥 [수정] 게임이 닫혀 있으면 '사전예약 대기 화면' 보여줌
                  !isGameOpen ? (
                     <div className="text-center p-8 bg-gray-900/80 border border-gray-700 rounded-2xl shadow-2xl backdrop-blur-md animate-fade-in-up">
                         <div className="text-6xl mb-4">✅</div>
@@ -371,7 +406,6 @@ function GameContent() {
                         </div>
                     </div>
                  ) : (
-                    // 🔥 게임이 열려있으면 기존 로직 (사망 여부 확인 등)
                     userState && !userState.isAlive ? (
                         <DeathView userState={userState} roundData={roundData} eliminatedCount={eliminatedCount} handleShare={handleShare} />
                     ) : roundData ? (
