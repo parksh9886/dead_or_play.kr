@@ -90,6 +90,21 @@ function GameContent() {
     fetchGlobalStats();
   }, []);
 
+  // 🔥 [신규 추가] Monetag 팝언더 광고 스크립트 주입
+  // roundData가 로드되면(게임 화면에 진입하면) 스크립트를 심습니다.
+  // 사용자가 화면을 클릭(투표 등)하는 순간 광고가 뜹니다.
+  useEffect(() => {
+    if (roundData && !document.getElementById('monetag-popunder')) {
+      const script = document.createElement('script');
+      script.id = 'monetag-popunder'; // 중복 방지용 ID
+      script.src = 'https://al5sm.com/tag.min.js';
+      script.dataset.zone = '10410307'; // 사용자 Zone ID
+
+      // body 태그 맨 뒤에 추가
+      document.body.appendChild(script);
+    }
+  }, [roundData]);
+
   const fetchGameData = async (nonce: string) => {
     setIsDataReady(false);
     try {
