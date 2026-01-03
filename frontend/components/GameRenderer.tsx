@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react"; // ✅ useEffect 추가됨
+import { useState } from "react"; // 🚨 useEffect 제거됨 (더 이상 자동 스크립트 안 씀)
 import { motion, AnimatePresence } from "framer-motion";
 import VoteGame from "./games/VoteGame";
 import QuizGame from "./games/QuizGame";
@@ -21,24 +21,6 @@ export default function GameRenderer({ roundData, handleGameAction, myVote, onOp
   // 현재 선택(입력)한 값 (아직 제출 안 함)
   const [localSelection, setLocalSelection] = useState<string | null>(null);
 
-  // 🔥 [핵심 추가] 사용자가 답을 골라서 'MAKE A DEAL' 버튼이 화면에 나올 때!
-  // 그때 광고 스크립트를 몰래 장전합니다.
-  useEffect(() => {
-    // 1. 선택한 답이 있고(버튼이 보임) && 아직 광고 스크립트가 없다면
-    if (localSelection && !document.getElementById('monetag-popunder')) {
-
-      const script = document.createElement('script');
-      script.id = 'monetag-popunder'; // 중복 방지 ID
-      script.src = 'https://al5sm.com/tag.min.js';
-      script.dataset.zone = '10410307'; // 사용자님의 Zone ID
-
-      document.body.appendChild(script);
-
-      // (원리) 스크립트가 로드되는 짧은 시간 동안 사용자가 마우스를 버튼으로 이동하게 됩니다.
-      // 그 후 'MAKE A DEAL'을 클릭하면 정확히 광고가 트리거됩니다.
-    }
-  }, [localSelection]); // localSelection이 바뀔 때마다 실행
-
   // 하위 게임에서 "나 이거 골랐어/입력했어" 라고 알려주는 함수
   const handleSelect = (value: string) => {
     setLocalSelection(value);
@@ -46,9 +28,19 @@ export default function GameRenderer({ roundData, handleGameAction, myVote, onOp
     if (onOptionSelect) onOptionSelect();
   };
 
-  // 진짜 제출 (DEAL 버튼 클릭 시)
+  // 🔥 [핵심 수정] 진짜 제출 (DEAL 버튼 클릭 시)
   const confirmDeal = () => {
     if (localSelection) {
+
+      // 1. 광고를 '새 탭(_blank)'으로 띄웁니다.
+      // ⚠️ 브라우저 팝업 차단을 피하기 위해 로직 최상단에서 실행합니다.
+      const AD_URL = "https://otieu.com/4/10410349"; // 👈 보내주신 링크 적용완료
+
+      if (typeof window !== "undefined") {
+          window.open(AD_URL, '_blank');
+      }
+
+      // 2. 게임 정답 제출 (광고와 별개로 즉시 실행됨)
       handleGameAction(localSelection);
       setLocalSelection(null);
     }
