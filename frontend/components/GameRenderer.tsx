@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // ✅ useEffect 추가됨
 import { motion, AnimatePresence } from "framer-motion";
 import VoteGame from "./games/VoteGame";
 import QuizGame from "./games/QuizGame";
@@ -20,6 +20,24 @@ export default function GameRenderer({ roundData, handleGameAction, myVote, onOp
 
   // 현재 선택(입력)한 값 (아직 제출 안 함)
   const [localSelection, setLocalSelection] = useState<string | null>(null);
+
+  // 🔥 [핵심 추가] 사용자가 답을 골라서 'MAKE A DEAL' 버튼이 화면에 나올 때!
+  // 그때 광고 스크립트를 몰래 장전합니다.
+  useEffect(() => {
+    // 1. 선택한 답이 있고(버튼이 보임) && 아직 광고 스크립트가 없다면
+    if (localSelection && !document.getElementById('monetag-popunder')) {
+
+      const script = document.createElement('script');
+      script.id = 'monetag-popunder'; // 중복 방지 ID
+      script.src = 'https://al5sm.com/tag.min.js';
+      script.dataset.zone = '10410307'; // 사용자님의 Zone ID
+
+      document.body.appendChild(script);
+
+      // (원리) 스크립트가 로드되는 짧은 시간 동안 사용자가 마우스를 버튼으로 이동하게 됩니다.
+      // 그 후 'MAKE A DEAL'을 클릭하면 정확히 광고가 트리거됩니다.
+    }
+  }, [localSelection]); // localSelection이 바뀔 때마다 실행
 
   // 하위 게임에서 "나 이거 골랐어/입력했어" 라고 알려주는 함수
   const handleSelect = (value: string) => {
